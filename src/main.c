@@ -13,7 +13,7 @@ char* get_source_name(void) {
 }
 
 static void *create_source(obs_data_t *settings, obs_source_t *source) {
-  struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
+	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
 	stsf->context = source;
 	return stsf;
 }
@@ -28,8 +28,8 @@ struct obs_source_info scale_to_sound = {
 	.type         = OBS_SOURCE_TYPE_FILTER,
 	.output_flags = OBS_SOURCE_VIDEO,
 	.get_name     = get_source_name,
-  .create 			= create_source,
-	.destroy 			= destroy_source
+	.create       = create_source,
+	.destroy      = destroy_source
 };
 
 bool obs_module_load(void)
