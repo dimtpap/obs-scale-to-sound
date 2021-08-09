@@ -20,17 +20,39 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #define SOURCE_NAME "Scale To Sound"
 
+#define STS_AUDSRC "STS_AUDSRC"
+#define STS_MINPER "STS_MINPER"
+#define STS_MAXPER "STS_MAXPER"
+
 OBS_DECLARE_MODULE()
 
 struct scale_to_sound_data {
 	obs_source_t *context;
+	obs_property_t *sources_list;
+
 	gs_effect_t *mover;
+	obs_source_t *audio_source;
+
+	long long *min;
+	long *max;
 };
 
 char *get_source_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return SOURCE_NAME;
+}
+
+
+static void *filter_update(void *data, obs_data_t *settings)
+{
+	struct scale_to_sound_data *stsf = data;
+	stsf->audio_source = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
+
+	stsf->min = obs_data_get_int(settings, STS_MINPER);
+	stsf->max = obs_data_get_int(settings, STS_MAXPER);
+
+	return stsf;
 }
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
@@ -42,7 +64,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	stsf->mover = gs_effect_create_from_file(obs_module_file("default_move.effect"), NULL);
 	obs_leave_graphics();
 
-	return stsf;
+	return filter_update(stsf, settings);
 }
 
 static obs_data_t *filter_defaults(void *data)
@@ -51,25 +73,38 @@ static obs_data_t *filter_defaults(void *data)
 
 	obs_data_t *settings = obs_data_create();
 	
-	//TODO: Create the defaults
+	obs_data_set_default_int(settings, STS_MINPER, 90);
+	obs_data_set_default_int(settings, STS_MAXPER, 100);
 
 	return settings;
 }
 
+static bool enum_audio_sources(void *data, obs_source_t *source)
+{
+	struct scale_to_sound_data *stsf = data;
+	uint32_t flags = obs_source_get_output_flags(source);
+
+	if ((flags & OBS_SOURCE_AUDIO) != 0) {
+		const char *name = obs_source_get_name(source);
+		obs_property_list_add_string(stsf->sources_list, name, name);
+	}
+	return true;
+}
 static obs_properties_t *filter_properties(void *data)
 {
-	UNUSED_PARAMETER(data);
+	struct scale_to_sound_data *stsf = data;
 
 	obs_properties_t *p = obs_properties_create();
-	
-	//TODO: Create the properties
-	/* Audio Source - Source to get audio data from
-	   Minimum size to scale to (%)
-		 Maximum size to scale to (%)
 
-		 Maybes:
-		 Minimum/Maximum audio level
-	*/
+	obs_property_t *sources = obs_properties_add_list(p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	stsf->sources_list = sources;
+	obs_enum_sources(enum_audio_sources, stsf);
+
+	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 100, 1);
+	obs_property_int_set_suffix(minper, "%");
+	
+	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 0, 100, 1);
+	obs_property_int_set_suffix(maxper, "%");
 
 	return p;
 }
@@ -121,11 +156,11 @@ struct obs_source_info scale_to_sound = {
 	.output_flags = OBS_SOURCE_VIDEO,
 	.get_name = get_source_name,
 	.video_render = filter_render,
-	//.get_properties = filter_properties,
-	//.get_defaults = filter_defaults,
+	.get_properties = filter_properties,
+	.get_defaults = filter_defaults,
 	.create = filter_create,
-	.destroy = filter_destroy
-};
+	.update = filter_update,
+	.destroy = filter_destroy};
 
 bool obs_module_load(void)
 {
