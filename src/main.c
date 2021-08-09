@@ -34,7 +34,7 @@ struct scale_to_sound_data {
 	obs_source_t *audio_source;
 
 	long long *min;
-	long *max;
+	long long *max;
 };
 
 char *get_source_name(void *unused)
