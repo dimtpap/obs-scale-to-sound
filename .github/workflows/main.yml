@@ -6,7 +6,7 @@ on:
 
 env:
   PLUGIN_NAME: obs-scale-to-sound
-  OBS_VERSION: 27.0.0
+  OBS_VERSION: 27.0.1
 
 jobs:
   ubuntu64:
