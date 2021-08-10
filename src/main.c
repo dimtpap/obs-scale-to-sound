@@ -59,6 +59,11 @@ static obs_source_audio_capture_t calculate_audio_level(void *param, obs_source_
 {
 	struct scale_to_sound_data *stsf = param;
 
+	if(muted) {
+		stsf->audio_level = stsf->minimum_audio_level;
+		return;
+	}
+
 	//Taken from libobs/obs-audio-controls.c volmeter_process_magnitude and slightly modified
 	size_t nr_samples = data->frames;
 
