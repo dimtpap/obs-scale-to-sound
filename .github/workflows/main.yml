@@ -5,7 +5,7 @@ on:
     branches: [main, actions]
 
 env:
-  PUGIN_NAME: scale-to-sound
+  PUGIN_NAME: obs-scale-to-sound
   OBS_VERSION: 27.0.0
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
         with:
           repository: obsproject/obs-studio
           ref: ${{ env.OBS_VERSION }}
-          submodules: 'recursive'
+          submodules: recursive
       - name: Get plugin source
         uses: actions/checkout@v2.3.3
         with:
@@ -120,7 +120,7 @@ jobs:
         with:
           repository: obsproject/obs-studio
           ref: ${{ env.OBS_VERSION }}
-          submodules: 'recursive'
+          submodules: recursive
       - name: Get plugin source
         uses: actions/checkout@v2.3.3
         with:
@@ -144,12 +144,12 @@ jobs:
         with:
           path: ${{ github.workspace }}/cmbuild/deps
           key: ${{ runner.os }}-pr-${{ env.CACHE_NAME }}-${{ env.WINDOWS_DEPS_VERSION }}
-      - name: 'Install prerequisite: QT'
+      - name: Install QT
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
           curl -kLO https://cdn-fastly.obsproject.com/downloads/Qt_${{ env.QT_VERSION }}.7z -f --retry 5 -C -
           7z x Qt_${{ env.QT_VERSION }}.7z -o"${{ github.workspace }}/cmbuild/QT"
-      - name: 'Install prerequisite: Pre-built dependencies'
+      - name: Install dependencies
         if: steps.deps-cache.outputs.cache-hit != 'true'
         run: |
           curl -kLO https://cdn-fastly.obsproject.com/downloads/dependencies${{ env.WINDOWS_DEPS_VERSION }}.zip -f --retry 5 -C -
