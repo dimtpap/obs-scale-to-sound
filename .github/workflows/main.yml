@@ -5,7 +5,7 @@ on:
     branches: [main, actions]
 
 env:
-  PUGIN_NAME: obs-scale-to-sound
+  PLUGIN_NAME: obs-scale-to-sound
   OBS_VERSION: 27.0.0
 
 jobs:
