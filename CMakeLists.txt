@@ -1,4 +1,4 @@
-project(obs-scale-to-sound VERSION 0.0.1)
+project(obs-scale-to-sound VERSION 0.1.0)
 
 set(obs-scale-to-sound_SOURCES
   src/main.c)
