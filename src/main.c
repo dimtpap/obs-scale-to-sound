@@ -35,6 +35,14 @@ struct scale_to_sound_data {
 	long long *min;
 	long long *max;
 
+	uint32_t src_w;
+	uint32_t src_h;
+
+	uint32_t *min_w;
+	uint32_t *min_h;
+	uint32_t *max_w;
+	uint32_t *max_h;
+
 	float audio_level;
 
 	gs_effect_t *mover;
@@ -48,10 +56,10 @@ char *get_source_name(void *unused)
 }
 
 static obs_source_audio_capture_t calculate_audio_level(void *param, obs_source_t *source, struct audio_data *data, bool *muted)
-{	
-	//Taken straight out of libobs/obs-audio-controls.c volmeter_process_magnitude
+{
 	struct scale_to_sound_data *stsf = param;
 
+	//Taken from libobs/obs-audio-controls.c volmeter_process_magnitude and slightly modified
 	size_t nr_samples = data->frames;
 
 	float *samples = (float *)data->data[0];
@@ -80,14 +88,22 @@ static void *filter_update(void *data, obs_data_t *settings)
 	uint32_t w = obs_source_get_base_width(target);
 	uint32_t h = obs_source_get_base_height(target);
 
-	if (max < min) {
+	stsf->src_w = w;
+	stsf->src_h = h;
+
+	if (max <= min) {
 		obs_data_set_int(settings, STS_MAXPER, min + 1);
 		stsf->max = min + 1;
-	} 
+	}
 	else {
 		stsf->max = max;
 	}
 	stsf->min = min;
+
+	stsf->min_w = w * min / 100;
+	stsf->min_h = h * min / 100;
+	stsf->max_w = w * max / 100;
+	stsf->max_h = h * max / 100;
 
 	double min_audio_level = obs_data_get_double(settings, STS_MINLVL);
 	stsf->minimum_audio_level = min_audio_level;
@@ -103,6 +119,11 @@ static void *filter_update(void *data, obs_data_t *settings)
 
 	return stsf;
 }
+static void *filter_load(void *data, obs_data_t *settings)
+{
+	struct scale_to_sound_data *stsf = data;
+	filter_update(stsf, settings);
+}
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
 {
@@ -113,7 +134,6 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	stsf->mover = gs_effect_create_from_file(obs_module_file("default_move.effect"), NULL);
 	obs_leave_graphics();
 
-	filter_update(stsf, settings);
 	return stsf;
 }
 
@@ -174,6 +194,7 @@ static void filter_render(void *data, gs_effect_t *effect)
 	UNUSED_PARAMETER(effect);
 
 	struct scale_to_sound_data *stsf = data;
+
 	obs_source_t *target = obs_filter_get_target(stsf->context);
 
 	obs_source_t *audio_source = stsf->audio_source;
@@ -183,11 +204,11 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	double scale_percent = abs(min_audio_level) - abs(audio_level);
 
+	uint32_t w = stsf->src_w;
+	uint32_t h = stsf->src_h;
+
 	uint32_t min_scale_percent = stsf->min;
 	uint32_t max_scale_percent = stsf->max;
-
-	uint32_t w = obs_source_get_base_width(target);
-	uint32_t h = obs_source_get_base_height(target);
 
 	//Scale the calculated from audio precentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / abs(min_audio_level) + min_scale_percent;
@@ -195,17 +216,13 @@ static void filter_render(void *data, gs_effect_t *effect)
 	uint32_t audio_w = w * scale_percent / 100;
 	uint32_t audio_h = h * scale_percent / 100;
 
-	if (audio_level < min_audio_level
-			|| audio_w < w * min_scale_percent / 100
-			|| audio_h < h * min_scale_percent / 100) {
-		audio_w = w * min_scale_percent / 100;
-		audio_h = h * min_scale_percent / 100;
+	if (audio_level < min_audio_level || audio_w <= stsf->min_w || audio_h <= stsf->min_h) {
+		audio_w = stsf->min_w;
+		audio_h = stsf->min_h;
 	}
-	if (audio_w > w || audio_h > h
-			|| audio_w > audio_w * max_scale_percent / 100
-	    || audio_h > audio_h * max_scale_percent / 100) {
-		audio_w = w * max_scale_percent / 100;
-		audio_h = h * max_scale_percent / 100;
+	if (audio_w >= stsf->max_w || audio_h >= stsf->max_h) {
+		audio_w = stsf->max_w;
+		audio_h = stsf->max_h;
 	}
 
 	obs_enter_graphics();
@@ -228,11 +245,12 @@ struct obs_source_info scale_to_sound = {.id = "scale_to_sound",
 	.type = OBS_SOURCE_TYPE_FILTER,
 	.output_flags = OBS_SOURCE_VIDEO,
 	.get_name = get_source_name,
-	.video_render = filter_render,
-	.get_properties = filter_properties,
 	.get_defaults = filter_defaults,
+	.get_properties = filter_properties,
 	.create = filter_create,
+	.load = filter_load,
 	.update = filter_update,
+	.video_render = filter_render,
 	.destroy = filter_destroy
 };
 
