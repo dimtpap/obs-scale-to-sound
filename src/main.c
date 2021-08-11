@@ -173,7 +173,7 @@ static obs_properties_t *filter_properties(void *data)
 	obs_property_t *minlvl = obs_properties_add_float_slider(p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
 	obs_property_float_set_suffix(minlvl, "dB");
 
-	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 1, 100, 1);
+	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 100, 1);
 	obs_property_int_set_suffix(minper, "%");
 
 	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 1, 100, 1);
@@ -221,11 +221,11 @@ static void filter_render(void *data, gs_effect_t *effect)
 	uint32_t audio_w = w * scale_percent / 100;
 	uint32_t audio_h = h * scale_percent / 100;
 
-	if (audio_level < min_audio_level || audio_w <= stsf->min_w || audio_h <= stsf->min_h) {
+	if (audio_level < min_audio_level || audio_w < stsf->min_w || audio_h < stsf->min_h) {
 		audio_w = stsf->min_w;
 		audio_h = stsf->min_h;
 	}
-	if (audio_w >= stsf->max_w || audio_h >= stsf->max_h) {
+	if (audio_w > stsf->max_w || audio_h > stsf->max_h) {
 		audio_w = stsf->max_w;
 		audio_h = stsf->max_h;
 	}
@@ -235,6 +235,12 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	gs_effect_t *move_effect = stsf->mover;
 	gs_eparam_t *move_val = gs_effect_get_param_by_name(move_effect, "inputPos");
+	gs_eparam_t *hide = gs_effect_get_param_by_name(move_effect, "hide");
+
+	gs_effect_set_float(hide, 1.0f);
+	if(audio_w == 0 || audio_h == 0) {
+		gs_effect_set_float(hide, 0.0f);		
+	}
 
 	//Change the position everytime so it looks like it's scaling from the center
 	struct vec4 move_vec;
