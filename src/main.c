@@ -21,9 +21,11 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define SOURCE_NAME "Scale To Sound"
 
 #define STS_AUDSRC "STS_AUDSRC"
+#define STS_MINLVL "STS_MIN_LVL"
 #define STS_MINPER "STS_MINPER"
 #define STS_MAXPER "STS_MAXPER"
-#define STS_MINLVL "STS_MIN_LVL"
+#define STS_SCALEW "STS_SCALEW"
+#define STS_SCALEH "STS_SCALEH"
 
 OBS_DECLARE_MODULE()
 
@@ -34,6 +36,8 @@ struct scale_to_sound_data {
 	double minimum_audio_level;
 	long long *min;
 	long long *max;
+	bool *scale_w;
+	bool *scale_h;
 
 	uint32_t src_w;
 	uint32_t src_h;
@@ -105,6 +109,9 @@ static void *filter_update(void *data, obs_data_t *settings)
 	}
 	stsf->min = min;
 
+	stsf->scale_w = obs_data_get_bool(settings, STS_SCALEW);
+	stsf->scale_h = obs_data_get_bool(settings, STS_SCALEH);
+
 	stsf->min_w = w * min / 100;
 	stsf->min_h = h * min / 100;
 	stsf->max_w = w * max / 100;
@@ -144,9 +151,13 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 static void *filter_defaults(obs_data_t *settings)
 {
+	obs_data_set_default_double(settings, STS_MINLVL, -40);
+
 	obs_data_set_default_int(settings, STS_MINPER, 90);
 	obs_data_set_default_int(settings, STS_MAXPER, 100);
-	obs_data_set_default_double(settings, STS_MINLVL, -40);
+
+	obs_data_set_default_bool(settings, STS_SCALEW, true);
+	obs_data_set_default_bool(settings, STS_SCALEH, true);
 }
 
 static bool enum_audio_sources(void *data, obs_source_t *source)
@@ -178,6 +189,9 @@ static obs_properties_t *filter_properties(void *data)
 
 	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 1, 100, 1);
 	obs_property_int_set_suffix(maxper, "%");
+
+	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
+	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
 	return p;
 }
@@ -218,16 +232,16 @@ static void filter_render(void *data, gs_effect_t *effect)
 	//Scale the calculated from audio precentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / abs(min_audio_level) + min_scale_percent;
 
-	uint32_t audio_w = w * scale_percent / 100;
-	uint32_t audio_h = h * scale_percent / 100;
+	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
+	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
 
 	if (audio_level < min_audio_level || audio_w < stsf->min_w || audio_h < stsf->min_h) {
-		audio_w = stsf->min_w;
-		audio_h = stsf->min_h;
+		audio_w = stsf->scale_w ? stsf->min_w : w;
+		audio_h = stsf->scale_h ? stsf->min_h : h;
 	}
 	if (audio_w > stsf->max_w || audio_h > stsf->max_h) {
-		audio_w = stsf->max_w;
-		audio_h = stsf->max_h;
+		audio_w = stsf->scale_w ? stsf->max_w : w;
+		audio_h = stsf->scale_h ? stsf->max_h : h;
 	}
 
 	obs_enter_graphics();
@@ -235,11 +249,11 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	gs_effect_t *move_effect = stsf->mover;
 	gs_eparam_t *move_val = gs_effect_get_param_by_name(move_effect, "inputPos");
-	gs_eparam_t *hide = gs_effect_get_param_by_name(move_effect, "hide");
+	gs_eparam_t *show = gs_effect_get_param_by_name(move_effect, "show");
 
-	gs_effect_set_float(hide, 1.0f);
+	gs_effect_set_float(show, 1.0f);
 	if(audio_w == 0 || audio_h == 0) {
-		gs_effect_set_float(hide, 0.0f);		
+		gs_effect_set_float(show, 0.0f);		
 	}
 
 	//Change the position everytime so it looks like it's scaling from the center
@@ -252,7 +266,8 @@ static void filter_render(void *data, gs_effect_t *effect)
 	obs_leave_graphics();
 }
 
-struct obs_source_info scale_to_sound = {.id = "scale_to_sound",
+struct obs_source_info scale_to_sound = {
+	.id = "scale_to_sound",
 	.type = OBS_SOURCE_TYPE_FILTER,
 	.output_flags = OBS_SOURCE_VIDEO,
 	.get_name = get_source_name,
