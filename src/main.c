@@ -34,18 +34,18 @@ struct scale_to_sound_data {
 
 	obs_property_t *sources_list;
 	double minimum_audio_level;
-	long long *min;
-	long long *max;
-	bool *scale_w;
-	bool *scale_h;
+	long long min;
+	long long max;
+	bool scale_w;
+	bool scale_h;
 
 	uint32_t src_w;
 	uint32_t src_h;
 
-	uint32_t *min_w;
-	uint32_t *min_h;
-	uint32_t *max_w;
-	uint32_t *max_h;
+	long long min_w;
+	long long min_h;
+	long long max_w;
+	long long max_h;
 
 	float audio_level;
 
@@ -53,14 +53,16 @@ struct scale_to_sound_data {
 	obs_source_t *audio_source;
 };
 
-char *get_source_name(void *unused)
+const char *get_source_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return SOURCE_NAME;
 }
 
-static obs_source_audio_capture_t calculate_audio_level(void *param, obs_source_t *source, struct audio_data *data, bool *muted)
+static void calculate_audio_level(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
 {
+	UNUSED_PARAMETER(source);
+
 	struct scale_to_sound_data *stsf = param;
 
 	if(muted) {
@@ -82,10 +84,8 @@ static obs_source_audio_capture_t calculate_audio_level(void *param, obs_source_
 	}
 
 	stsf->audio_level = obs_mul_to_db(sqrtf(sum / nr_samples));
-
-	return stsf;
 }
-static void *filter_update(void *data, obs_data_t *settings)
+static void filter_update(void *data, obs_data_t *settings)
 {
 	struct scale_to_sound_data *stsf = data;
 
@@ -128,10 +128,8 @@ static void *filter_update(void *data, obs_data_t *settings)
 
 		stsf->audio_source = audio_source;
 	}
-
-	return stsf;
 }
-static void *filter_load(void *data, obs_data_t *settings)
+static void filter_load(void *data, obs_data_t *settings)
 {
 	struct scale_to_sound_data *stsf = data;
 	filter_update(stsf, settings);
@@ -139,6 +137,8 @@ static void *filter_load(void *data, obs_data_t *settings)
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
 {
+	UNUSED_PARAMETER(settings);
+
 	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
 	stsf->context = source;
 
@@ -149,7 +149,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	return stsf;
 }
 
-static void *filter_defaults(obs_data_t *settings)
+static void filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, STS_MINLVL, -40);
 
@@ -196,7 +196,7 @@ static obs_properties_t *filter_properties(void *data)
 	return p;
 }
 
-static void filter_destroy(obs_data_t *data)
+static void filter_destroy(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
 
@@ -214,14 +214,10 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	struct scale_to_sound_data *stsf = data;
 
-	obs_source_t *target = obs_filter_get_target(stsf->context);
-
-	obs_source_t *audio_source = stsf->audio_source;
-
 	double min_audio_level = stsf->minimum_audio_level;
 	double audio_level = stsf->audio_level;
 
-	double scale_percent = abs(min_audio_level) - abs(audio_level);
+	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	uint32_t w = stsf->src_w;
 	uint32_t h = stsf->src_h;
@@ -230,7 +226,7 @@ static void filter_render(void *data, gs_effect_t *effect)
 	uint32_t max_scale_percent = stsf->max;
 
 	//Scale the calculated from audio precentage down to the user-set range
-	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / abs(min_audio_level) + min_scale_percent;
+	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / fabs(min_audio_level) + min_scale_percent;
 
 	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
 	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
