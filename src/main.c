@@ -31,6 +31,7 @@ OBS_DECLARE_MODULE()
 
 struct scale_to_sound_data {
 	obs_source_t *context;
+	obs_source_t *target;
 
 	obs_property_t *sources_list;
 	double minimum_audio_level;
@@ -90,6 +91,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	struct scale_to_sound_data *stsf = data;
 
 	obs_source_t *target = obs_filter_get_target(stsf->context);
+	stsf->target = target;
 
 	long long min = obs_data_get_int(settings, STS_MINPER);
 	long long max = obs_data_get_int(settings, STS_MAXPER);
@@ -200,14 +202,33 @@ static void filter_destroy(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
 
+	obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
+
 	obs_enter_graphics();
 	gs_effect_destroy(stsf->mover);
 	obs_leave_graphics();
 
-	obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
 	bfree(stsf);
 }
 
+static void target_update(void *data, float *seconds) {
+	UNUSED_PARAMETER(seconds);
+	
+	//!This should really be done using a signal but I could not get those working so here we are...
+	struct scale_to_sound_data *stsf = data;
+
+	obs_source_t *target = stsf->target;
+
+	uint32_t w = stsf->src_w;
+	uint32_t h = stsf->src_h;
+
+	uint32_t new_w = obs_source_get_base_width(target);
+	uint32_t new_h = obs_source_get_base_height(target);
+
+	if(new_w != w || new_h != h) {
+		filter_update(stsf, obs_source_get_settings(stsf->context));
+	}
+}
 static void filter_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
@@ -231,14 +252,13 @@ static void filter_render(void *data, gs_effect_t *effect)
 	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
 	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
 
-	if (audio_level < min_audio_level || audio_w < stsf->min_w || audio_h < stsf->min_h) {
+	if(audio_level < min_audio_level || audio_w < stsf->min_w || audio_h < stsf->min_h) {
 		audio_w = stsf->scale_w ? stsf->min_w : w;
 		audio_h = stsf->scale_h ? stsf->min_h : h;
 	}
-	if (audio_w > stsf->max_w || audio_h > stsf->max_h) {
-		audio_w = stsf->scale_w ? stsf->max_w : w;
-		audio_h = stsf->scale_h ? stsf->max_h : h;
-	}
+	
+	if(audio_w > stsf->max_w) audio_w = stsf->scale_w ? stsf->max_w : w;
+	if(audio_h > stsf->max_h) audio_h = stsf->scale_h ? stsf->max_h : h;
 
 	obs_enter_graphics();
 	obs_source_process_filter_begin(stsf->context, GS_RGBA, OBS_ALLOW_DIRECT_RENDERING);
@@ -272,6 +292,7 @@ struct obs_source_info scale_to_sound = {
 	.create = filter_create,
 	.load = filter_load,
 	.update = filter_update,
+	.video_tick = target_update,
 	.video_render = filter_render,
 	.destroy = filter_destroy
 };
