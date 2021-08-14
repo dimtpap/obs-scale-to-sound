@@ -238,6 +238,10 @@ static void filter_render(void *data, gs_effect_t *effect)
 	double min_audio_level = stsf->minimum_audio_level;
 	double audio_level = stsf->audio_level;
 
+	if(audio_level >= 0) {
+		audio_level = min_audio_level;
+	}
+
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	uint32_t w = stsf->src_w;
