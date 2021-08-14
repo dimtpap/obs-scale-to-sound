@@ -211,7 +211,7 @@ static void filter_destroy(void *data)
 	bfree(stsf);
 }
 
-static void target_update(void *data, float *seconds) {
+static void target_update(void *data, float seconds) {
 	UNUSED_PARAMETER(seconds);
 	
 	//!This should really be done using a signal but I could not get those working so here we are...
