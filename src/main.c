@@ -131,6 +131,9 @@ static void filter_update(void *data, obs_data_t *settings)
 
 		stsf->audio_source = audio_source;
 	}
+	else {
+		obs_source_release(audio_source);
+	}
 }
 static void filter_load(void *data, obs_data_t *settings)
 {
