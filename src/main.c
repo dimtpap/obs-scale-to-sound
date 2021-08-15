@@ -126,6 +126,7 @@ static void filter_update(void *data, obs_data_t *settings)
 
 	if (stsf->audio_source != audio_source) {
 		obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
+		obs_source_release(stsf->audio_source);
 		obs_source_add_audio_capture_callback(audio_source, calculate_audio_level, stsf);
 
 		stsf->audio_source = audio_source;
@@ -203,6 +204,7 @@ static void filter_destroy(void *data)
 	struct scale_to_sound_data *stsf = data;
 
 	obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
+	obs_source_release(stsf->audio_source);
 
 	obs_enter_graphics();
 	gs_effect_destroy(stsf->mover);
@@ -226,7 +228,9 @@ static void target_update(void *data, float seconds) {
 	uint32_t new_h = obs_source_get_base_height(target);
 
 	if(new_w != w || new_h != h) {
-		filter_update(stsf, obs_source_get_settings(stsf->context));
+		obs_data_t *settings = obs_source_get_settings(stsf->context);
+		filter_update(stsf, settings);
+		obs_data_release(settings);
 	}
 }
 static void filter_render(void *data, gs_effect_t *effect)

@@ -2,7 +2,7 @@ name: Build Plugin
 
 on:
   push:
-    branches: [main, actions]
+    branches: [main, dev, actions]
 
 env:
   PLUGIN_NAME: obs-scale-to-sound
