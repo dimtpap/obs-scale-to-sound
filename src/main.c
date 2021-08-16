@@ -245,10 +245,6 @@ static void filter_render(void *data, gs_effect_t *effect)
 	double min_audio_level = stsf->minimum_audio_level;
 	double audio_level = stsf->audio_level;
 
-	if(audio_level >= 0) {
-		audio_level = min_audio_level;
-	}
-
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	uint32_t w = stsf->src_w;
@@ -259,6 +255,7 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	//Scale the calculated from audio precentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / fabs(min_audio_level) + min_scale_percent;
+	if(scale_percent < min_scale_percent || audio_level >= 0) scale_percent = min_scale_percent;
 
 	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
 	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
@@ -279,8 +276,10 @@ static void filter_render(void *data, gs_effect_t *effect)
 	gs_eparam_t *show = gs_effect_get_param_by_name(move_effect, "show");
 
 	gs_effect_set_float(show, 1.0f);
-	if(audio_w == 0 || audio_h == 0) {
-		gs_effect_set_float(show, 0.0f);		
+	if(audio_w <= 0 || audio_h <= 0) {
+		gs_effect_set_float(show, 0.0f);
+		audio_w = 1;
+		audio_h = 1;
 	}
 
 	//Change the position everytime so it looks like it's scaling from the center
