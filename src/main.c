@@ -243,16 +243,17 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	struct scale_to_sound_data *stsf = data;
 
-	double min_audio_level = stsf->minimum_audio_level;
-	double audio_level = stsf->audio_level;
-
-	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
-
 	uint32_t w = stsf->src_w;
 	uint32_t h = stsf->src_h;
 
 	uint32_t min_scale_percent = stsf->min;
 	uint32_t max_scale_percent = stsf->max;
+
+	double min_audio_level = stsf->minimum_audio_level;
+	double audio_level = stsf->audio_level;
+
+	if(min_audio_level >= 0) min_audio_level = -0.5f;
+	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	//Scale the calculated from audio precentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / fabs(min_audio_level) + min_scale_percent;
