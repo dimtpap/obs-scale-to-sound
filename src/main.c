@@ -190,7 +190,7 @@ static obs_properties_t *filter_properties(void *data)
 	obs_property_t *minlvl = obs_properties_add_float_slider(p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
 	obs_property_float_set_suffix(minlvl, "dB");
 
-	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 100, 1);
+	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 99, 1);
 	obs_property_int_set_suffix(minper, "%");
 
 	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 1, 100, 1);
