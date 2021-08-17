@@ -149,9 +149,11 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
 	stsf->context = source;
 
+	char *effect_file = obs_module_file("default_move.effect");
 	obs_enter_graphics();
-	stsf->mover = gs_effect_create_from_file(obs_module_file("default_move.effect"), NULL);
+	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
 	obs_leave_graphics();
+	bfree(effect_file);
 
 	return stsf;
 }
