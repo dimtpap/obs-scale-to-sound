@@ -76,6 +76,7 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	float *samples = (float *)data->data[0];
 	if (!samples) {
+		stsf->audio_level = stsf->minimum_audio_level;
 		return;
 	}
 	float sum = 0.0;
