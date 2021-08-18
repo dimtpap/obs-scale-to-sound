@@ -24,6 +24,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_MINLVL "STS_MIN_LVL"
 #define STS_MINPER "STS_MINPER"
 #define STS_MAXPER "STS_MAXPER"
+#define STS_INVSCL "STS_INVSCL"
 #define STS_SCALEW "STS_SCALEW"
 #define STS_SCALEH "STS_SCALEH"
 
@@ -35,6 +36,7 @@ struct scale_to_sound_data {
 
 	obs_property_t *sources_list;
 	double minimum_audio_level;
+	bool invert;
 	long long min;
 	long long max;
 	bool scale_w;
@@ -112,6 +114,8 @@ static void filter_update(void *data, obs_data_t *settings)
 	}
 	stsf->min = min;
 
+	stsf->invert = obs_data_get_bool(settings, STS_INVSCL);
+
 	stsf->scale_w = obs_data_get_bool(settings, STS_SCALEW);
 	stsf->scale_h = obs_data_get_bool(settings, STS_SCALEH);
 
@@ -165,6 +169,8 @@ static void filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, STS_MINPER, 90);
 	obs_data_set_default_int(settings, STS_MAXPER, 100);
 
+	obs_data_set_default_bool(settings, STS_INVSCL, false);
+
 	obs_data_set_default_bool(settings, STS_SCALEW, true);
 	obs_data_set_default_bool(settings, STS_SCALEH, true);
 }
@@ -198,6 +204,8 @@ static obs_properties_t *filter_properties(void *data)
 
 	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 1, 100, 1);
 	obs_property_int_set_suffix(maxper, "%");
+
+	obs_properties_add_bool(p, STS_INVSCL, "Inverse Scaling");
 
 	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
@@ -261,10 +269,12 @@ static void filter_render(void *data, gs_effect_t *effect)
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / fabs(min_audio_level) + min_scale_percent;
 	if(scale_percent < min_scale_percent || audio_level >= 0) scale_percent = min_scale_percent;
 
+	if(stsf->invert) scale_percent = min_scale_percent + max_scale_percent - scale_percent;
+
 	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
 	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
 
-	if(audio_level < min_audio_level || audio_w < stsf->min_w || audio_h < stsf->min_h) {
+	if((audio_level < min_audio_level && !stsf->invert) || audio_w < stsf->min_w || audio_h < stsf->min_h) {
 		audio_w = stsf->scale_w ? stsf->min_w : w;
 		audio_h = stsf->scale_h ? stsf->min_h : h;
 	}
