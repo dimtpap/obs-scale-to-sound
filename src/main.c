@@ -29,7 +29,11 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_SCALEH "STS_SCALEH"
 
 OBS_DECLARE_MODULE()
-
+const char *get_source_name(void *unused)
+{
+	UNUSED_PARAMETER(unused);
+	return SOURCE_NAME;
+}
 struct scale_to_sound_data {
 	obs_source_t *context;
 	obs_source_t *target;
@@ -55,12 +59,6 @@ struct scale_to_sound_data {
 	gs_effect_t *mover;
 	obs_source_t *audio_source;
 };
-
-const char *get_source_name(void *unused)
-{
-	UNUSED_PARAMETER(unused);
-	return SOURCE_NAME;
-}
 
 static void calculate_audio_level(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
 {
@@ -88,6 +86,22 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	}
 
 	stsf->audio_level = obs_mul_to_db(sqrtf(sum / nr_samples));
+}
+
+static void *filter_create(obs_data_t *settings, obs_source_t *source)
+{
+	UNUSED_PARAMETER(settings);
+
+	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
+	stsf->context = source;
+
+	char *effect_file = obs_module_file("default_move.effect");
+	obs_enter_graphics();
+	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
+	obs_leave_graphics();
+	bfree(effect_file);
+
+	return stsf;
 }
 static void filter_update(void *data, obs_data_t *settings)
 {
@@ -146,35 +160,6 @@ static void filter_load(void *data, obs_data_t *settings)
 	filter_update(stsf, settings);
 }
 
-static void *filter_create(obs_data_t *settings, obs_source_t *source)
-{
-	UNUSED_PARAMETER(settings);
-
-	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
-	stsf->context = source;
-
-	char *effect_file = obs_module_file("default_move.effect");
-	obs_enter_graphics();
-	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
-	obs_leave_graphics();
-	bfree(effect_file);
-
-	return stsf;
-}
-
-static void filter_defaults(obs_data_t *settings)
-{
-	obs_data_set_default_double(settings, STS_MINLVL, -40);
-
-	obs_data_set_default_int(settings, STS_MINPER, 90);
-	obs_data_set_default_int(settings, STS_MAXPER, 100);
-
-	obs_data_set_default_bool(settings, STS_INVSCL, false);
-
-	obs_data_set_default_bool(settings, STS_SCALEW, true);
-	obs_data_set_default_bool(settings, STS_SCALEH, true);
-}
-
 static bool enum_audio_sources(void *data, obs_source_t *source)
 {
 	struct scale_to_sound_data *stsf = data;
@@ -211,6 +196,18 @@ static obs_properties_t *filter_properties(void *data)
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
 	return p;
+}
+static void filter_defaults(obs_data_t *settings)
+{
+	obs_data_set_default_double(settings, STS_MINLVL, -40);
+
+	obs_data_set_default_int(settings, STS_MINPER, 90);
+	obs_data_set_default_int(settings, STS_MAXPER, 100);
+
+	obs_data_set_default_bool(settings, STS_INVSCL, false);
+
+	obs_data_set_default_bool(settings, STS_SCALEW, true);
+	obs_data_set_default_bool(settings, STS_SCALEH, true);
 }
 
 static void filter_destroy(void *data)
