@@ -8,6 +8,14 @@ There are a few properties so you can fine tune how it behaves
 ## Installation
 See [releases](https://github.com/Qufyy/obs-scale-to-sound/releases)
 
+### ArchLinux AUR Package
+obs-scale-to-sound is also available as an [AUR Package](https://aur.archlinux.org/packages/?O=0&K=obs-scale-to-sound)
+If you use [yay](https://github.com/Jguer/yay) just run this to install it:
+
+```shell
+yay -S obs-scale-to-sound
+```
+
 ## Thanks
 [Exeldro](https://github.com/exeldro) for the GitHub Actions workflow  
 OBS Studio team and contributors for making such a great tool  
