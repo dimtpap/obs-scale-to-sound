@@ -19,13 +19,6 @@ jobs:
           repository: obsproject/obs-studio
           ref: ${{ env.OBS_VERSION }}
           submodules: recursive
-      - name: Get plugin source
-        uses: actions/checkout@v2.3.3
-        with:
-          path: plugins/${{ env.PLUGIN_NAME }}
-      - name: Add plugin to OBS cmake
-        shell: bash
-        run: echo "add_subdirectory(${{ env.PLUGIN_NAME }})" >> plugins/CMakeLists.txt
       - name: Fetch Git Tags
         run: git fetch --prune --tags --unshallow
       - name: Install dependencies
@@ -44,21 +37,17 @@ jobs:
            libavformat-dev \
            libavutil-dev \
            libcurl4-openssl-dev \
-           libfdk-aac-dev \
            libfontconfig-dev \
            libfreetype6-dev \
            libgl1-mesa-dev \
-           libjack-jackd2-dev \
            libjansson-dev \
            libluajit-5.1-dev \
-           libpulse-dev \
            libqt5x11extras5-dev \
            libsndio-dev \
            libspeexdsp-dev \
            libswresample-dev \
            libswscale-dev \
            libudev-dev \
-           libv4l-dev \
            libva-dev \
            libvlc-dev \
            libx11-dev \
@@ -68,7 +57,6 @@ jobs:
            libxcb-shm0-dev \
            libxcb-xfixes0-dev \
            libxcb-xinerama0-dev \
-           libxcomposite-dev \
            libxinerama-dev \
            libmbedtls-dev \
            pkg-config \
@@ -76,14 +64,25 @@ jobs:
            qtbase5-dev \
            qtbase5-private-dev \
            libqt5svg5-dev \
-           swig \
            linux-generic
+      - name: Remove all OBS Plugins
+        shell: bash
+        run: |
+          rm -R plugins/*
+      - name: Get plugin source
+        uses: actions/checkout@v2.3.3
+        with:
+          path: plugins/${{ env.PLUGIN_NAME }}
       - name: Configure
         shell: bash
         run: |
+          echo "add_subdirectory(${{ env.PLUGIN_NAME }})" >> plugins/CMakeLists.txt
           mkdir ./build
           cd ./build
-          cmake -DUNIX_STRUCTURE=0 -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/obs-studio-portable" -DBUILD_CAPTIONS=OFF -DWITH_RTMPS=OFF -DBUILD_BROWSER=OFF -DBUILD_VIRTUALCAM=OFF -DBUILD_VST=OFF -DENABLE_PIPEWIRE=OFF -DENABLE_SCRIPTING=OFF ..
+          cmake -DUNIX_STRUCTURE=0 \
+          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/obs-studio-portable" \
+          -DENABLE_SCRIPTING=OFF \
+          -DDISABLE_UI=ON ..
       - name: Build
         shell: bash
         working-directory: ${{ github.workspace }}/build
@@ -92,18 +91,17 @@ jobs:
         shell: bash
         run: |
           FILE_DATE=$(date +%Y-%m-%d)
-          FILE_NAME=${{ env.PLUGIN_NAME }}-$FILE_DATE-${{ github.sha }}-linux64.tar.gz
+          FILE_NAME=${{ env.PLUGIN_NAME }}-$FILE_DATE-${{ github.sha }}-linux64
           echo "FILE_NAME=${FILE_NAME}" >> $GITHUB_ENV
-          mkdir -p ./${{ env.PLUGIN_NAME }}/bin/64bit/
-          mkdir -p ./${{ env.PLUGIN_NAME }}/data/
-          mv ./build/plugins/${{ env.PLUGIN_NAME }}/${{ env.PLUGIN_NAME }}.so ./${{ env.PLUGIN_NAME }}/bin/64bit/${{ env.PLUGIN_NAME }}.so
-          mv ./plugins/${{ env.PLUGIN_NAME }}/data/* ./${{ env.PLUGIN_NAME }}/data/
-          tar -cvzf "${FILE_NAME}" ${{ env.PLUGIN_NAME }}
+          mkdir -p ./package/${{ env.PLUGIN_NAME }}/bin/64bit/
+          mkdir -p ./package/${{ env.PLUGIN_NAME }}/data/
+          mv ./build/plugins/${{ env.PLUGIN_NAME }}/${{ env.PLUGIN_NAME }}.so ./package/${{ env.PLUGIN_NAME }}/bin/64bit/${{ env.PLUGIN_NAME }}.so
+          mv ./plugins/${{ env.PLUGIN_NAME }}/data/* ./package/${{ env.PLUGIN_NAME }}/data/
       - name: Publish
         uses: actions/upload-artifact@v2.2.0
         with:
           name: '${{ env.FILE_NAME }}'
-          path: '*.tar.gz'
+          path: 'package/*'
 
   windows:
     name: Windows Build
@@ -122,13 +120,6 @@ jobs:
           repository: obsproject/obs-studio
           ref: ${{ env.OBS_VERSION }}
           submodules: recursive
-      - name: Get plugin source
-        uses: actions/checkout@v2.3.3
-        with:
-          path: plugins/${{ env.PLUGIN_NAME }}
-      - name: Add plugin to OBS cmake
-        shell: cmd
-        run: echo add_subdirectory(${{ env.PLUGIN_NAME }}) >> plugins/CMakeLists.txt
       - name: 'Restore QT dependency from cache'
         id: qt-cache
         uses: actions/cache@v2.1.2
@@ -155,16 +146,26 @@ jobs:
         run: |
           curl -kLO https://cdn-fastly.obsproject.com/downloads/dependencies${{ env.WINDOWS_DEPS_VERSION }}.zip -f --retry 5 -C -
           7z x dependencies${{ env.WINDOWS_DEPS_VERSION }}.zip -o"${{ github.workspace }}/cmbuild/deps"
+      - name: Remove all OBS Plugins
+        shell: cmd
+        run: |
+          rmdir /s /q plugins
+          mkdir plugins
+          echo add_subdirectory(${{ env.PLUGIN_NAME }}) >> plugins\CMakeLists.txt
+      - name: Get plugin source
+        uses: actions/checkout@v2.3.3
+        with:
+          path: plugins/${{ env.PLUGIN_NAME }}
       - name: Configure
         run: |
           mkdir ./package
           mkdir ./build32
           cd ./build32
-          cmake -G"${{ env.CMAKE_GENERATOR }}" -A"Win32" -DCMAKE_SYSTEM_VERSION="${{ env.CMAKE_SYSTEM_VERSION }}" -DBUILD_BROWSER=false -DBUILD_VST=false -DBUILD_VIRTUALCAM=false -DBUILD_CAPTIONS=false -DCOMPILE_D3D12_HOOK=false -DENABLE_SCRIPTING=false -DDepsPath="${{ github.workspace }}/cmbuild/deps/win32" -DQTDIR="${{ github.workspace }}/cmbuild/QT/${{ env.QT_VERSION }}/msvc2019" -DCOPIED_DEPENDENCIES=FALSE -DCOPY_DEPENDENCIES=TRUE ..
+          cmake -G"${{ env.CMAKE_GENERATOR }}" -A"Win32" -DCMAKE_SYSTEM_VERSION="${{ env.CMAKE_SYSTEM_VERSION }}" -DENABLE_UI=OFF -DCOMPILE_D3D12_HOOK=false -DENABLE_SCRIPTING=false -DDepsPath="${{ github.workspace }}/cmbuild/deps/win32" -DQTDIR="${{ github.workspace }}/cmbuild/QT/${{ env.QT_VERSION }}/msvc2019" -DCOPIED_DEPENDENCIES=FALSE -DCOPY_DEPENDENCIES=TRUE ..
           cd ..
           mkdir ./build64
           cd ./build64
-          cmake -G"${{ env.CMAKE_GENERATOR }}" -A"x64" -DCMAKE_SYSTEM_VERSION="${{ env.CMAKE_SYSTEM_VERSION }}" -DBUILD_BROWSER=false -DBUILD_VST=false -DBUILD_VIRTUALCAM=false -DBUILD_CAPTIONS=false -DCOMPILE_D3D12_HOOK=false -DENABLE_SCRIPTING=false -DDepsPath="${{ github.workspace }}/cmbuild/deps/win64" -DQTDIR="${{ github.workspace }}/cmbuild/QT/${{ env.QT_VERSION }}/msvc2019_64" -DCOPIED_DEPENDENCIES=FALSE -DCOPY_DEPENDENCIES=TRUE ..
+          cmake -G"${{ env.CMAKE_GENERATOR }}" -A"x64" -DCMAKE_SYSTEM_VERSION="${{ env.CMAKE_SYSTEM_VERSION }}" -DENABLE_UI=OFF -DCOMPILE_D3D12_HOOK=false -DENABLE_SCRIPTING=false -DDepsPath="${{ github.workspace }}/cmbuild/deps/win64" -DQTDIR="${{ github.workspace }}/cmbuild/QT/${{ env.QT_VERSION }}/msvc2019_64" -DCOPIED_DEPENDENCIES=FALSE -DCOPY_DEPENDENCIES=TRUE ..
       - name: Build 32-bit
         run: msbuild /m /p:Configuration=RelWithDebInfo .\build32\obs-studio.sln
       - name: Build 64-bit
@@ -179,7 +180,83 @@ jobs:
           robocopy .\build64\rundir\RelWithDebInfo\obs-plugins\64bit\ .\package\obs-plugins\64bit ${{ env.PLUGIN_NAME }}.* /E /XF .gitignore
           robocopy .\build64\rundir\RelWithDebInfo\data\obs-plugins\${{ env.PLUGIN_NAME }}\ .\package\data\obs-plugins\${{ env.PLUGIN_NAME }}\ /E /XF .gitignore
           exit 0
-      - name: Publish zip
+      - name: Publish
+        if: success()
+        uses: actions/upload-artifact@v2.2.0
+        with:
+          name: '${{ env.FILE_NAME }}'
+          path: package/*
+
+  macos64:
+    name: "macOS Build"
+    runs-on: [macos-latest]
+    env:
+      QT_VERSION: '5.15.2'
+      MACOS_DEPS_VERSION: '2021-02-28'
+    steps:
+      - name: Get OBS source
+        uses: actions/checkout@v2.3.3
+        with:
+          repository: obsproject/obs-studio
+          ref: ${{ env.OBS_VERSION }}
+          submodules: 'recursive'
+      - name: Fetch Git Tags
+        run: |
+          git fetch --prune --tags --unshallow
+      - name: 'Install prerequisites (Homebrew)'
+        shell: bash
+        run: |
+          if [ -d /usr/local/opt/openssl@1.0.2t ]; then
+              brew uninstall openssl@1.0.2t
+              brew untap local/openssl
+          fi
+          if [ -d /usr/local/opt/python@2.7.17 ]; then
+              brew uninstall python@2.7.17
+              brew untap local/python2
+          fi
+          brew bundle --file ./CI/scripts/macos/Brewfile
+      - name: 'Install prerequisite: Pre-built dependencies'
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          curl -L -O https://github.com/obsproject/obs-deps/releases/download/${{ env.MACOS_DEPS_VERSION }}/macos-deps-${{ env.MACOS_DEPS_VERSION }}.tar.gz
+          tar -xf ./macos-deps-${{ env.MACOS_DEPS_VERSION }}.tar.gz -C "/tmp"
+      - name: Remove all OBS Plugins
+        shell: bash
+        run: |
+          rm -R plugins/*
+      - name: Get plugin source
+        uses: actions/checkout@v2.3.3
+        with:
+          path: plugins/${{ env.PLUGIN_NAME }}
+      - name: Configure
+        shell: bash
+        run: |
+          echo "add_subdirectory(${{ env.PLUGIN_NAME }})" >> plugins/CMakeLists.txt
+          mkdir ./build
+          cd ./build
+          cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DDepsPath="/tmp/obsdeps" \
+          -DENABLE_SCRIPTING=OFF \
+          -DDISABLE_UI=ON ..
+          cd -
+      - name: Build
+        shell: bash
+        run: |
+          set -e
+          cd ./build
+          make -j4
+          cd -
+      - name: Package
+        shell: bash
+        run: |
+          FILE_DATE=$(date +%Y-%m-%d)
+          FILE_NAME=${{ env.PLUGIN_NAME }}-$FILE_DATE-${{ github.sha }}-macos64
+          echo "FILE_NAME=${FILE_NAME}" >> $GITHUB_ENV
+          mkdir -p ./package/${{ env.PLUGIN_NAME }}/bin/
+          mkdir -p ./package/${{ env.PLUGIN_NAME }}/data/
+          mv ./build/plugins/${{ env.PLUGIN_NAME }}/${{ env.PLUGIN_NAME }}.so ./package/${{ env.PLUGIN_NAME }}/bin/${{ env.PLUGIN_NAME }}.so
+          mv ./plugins/${{ env.PLUGIN_NAME }}/data/* ./package/${{ env.PLUGIN_NAME }}/data/
+      - name: Publish
         if: success()
         uses: actions/upload-artifact@v2.2.0
         with:
