@@ -3,6 +3,7 @@ name: Build Plugin
 on:
   push:
     branches: [main, dev, actions]
+    paths: ['src/**', 'data/**']
 
 env:
   PLUGIN_NAME: obs-scale-to-sound
