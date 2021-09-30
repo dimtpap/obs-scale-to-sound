@@ -43,7 +43,6 @@ jobs:
            libgl1-mesa-dev \
            libjansson-dev \
            libluajit-5.1-dev \
-           libqt5x11extras5-dev \
            libsndio-dev \
            libspeexdsp-dev \
            libswresample-dev \
@@ -61,10 +60,6 @@ jobs:
            libxinerama-dev \
            libmbedtls-dev \
            pkg-config \
-           python3-dev \
-           qtbase5-dev \
-           qtbase5-private-dev \
-           libqt5svg5-dev \
            linux-generic
       - name: Remove all OBS Plugins
         shell: bash
@@ -121,14 +116,6 @@ jobs:
           repository: obsproject/obs-studio
           ref: ${{ env.OBS_VERSION }}
           submodules: recursive
-      - name: 'Restore QT dependency from cache'
-        id: qt-cache
-        uses: actions/cache@v2.1.2
-        env:
-          CACHE_NAME: 'qt-cache'
-        with:
-          path: ${{ github.workspace }}/cmbuild/QT
-          key: ${{ runner.os }}-pr-${{ env.CACHE_NAME }}-${{ env.QT_VERSION }}
       - name: 'Restore pre-built dependencies from cache'
         id: deps-cache
         uses: actions/cache@v2.1.2
@@ -137,11 +124,6 @@ jobs:
         with:
           path: ${{ github.workspace }}/cmbuild/deps
           key: ${{ runner.os }}-pr-${{ env.CACHE_NAME }}-${{ env.WINDOWS_DEPS_VERSION }}
-      - name: Install QT
-        if: steps.qt-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -kLO https://cdn-fastly.obsproject.com/downloads/Qt_${{ env.QT_VERSION }}.7z -f --retry 5 -C -
-          7z x Qt_${{ env.QT_VERSION }}.7z -o"${{ github.workspace }}/cmbuild/QT"
       - name: Install dependencies
         if: steps.deps-cache.outputs.cache-hit != 'true'
         run: |
