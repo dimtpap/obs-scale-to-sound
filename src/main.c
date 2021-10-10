@@ -25,6 +25,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_MINPER "STS_MINPER"
 #define STS_MAXPER "STS_MAXPER"
 #define STS_INVSCL "STS_INVSCL"
+#define STS_SMOOTH "STS_SMOOTH"
 #define STS_SCALEW "STS_SCALEW"
 #define STS_SCALEH "STS_SCALEH"
 
@@ -43,6 +44,7 @@ struct scale_to_sound_data {
 	bool invert;
 	long long min;
 	long long max;
+	double smooth;
 	bool scale_w;
 	bool scale_h;
 
@@ -54,7 +56,7 @@ struct scale_to_sound_data {
 	long long max_w;
 	long long max_h;
 
-	float audio_level;
+	double audio_level;
 
 	gs_effect_t *mover;
 	obs_source_t *audio_source;
@@ -66,8 +68,11 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	struct scale_to_sound_data *stsf = param;
 
+	double min_audio_level = stsf->minimum_audio_level;
+	double smooth = stsf->smooth;
+
 	if(muted) {
-		stsf->audio_level = stsf->minimum_audio_level;
+		stsf->audio_level = min_audio_level;
 		return;
 	}
 
@@ -76,7 +81,7 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	float *samples = (float *)data->data[0];
 	if (!samples) {
-		stsf->audio_level = stsf->minimum_audio_level;
+		stsf->audio_level = min_audio_level;
 		return;
 	}
 	float sum = 0.0;
@@ -85,7 +90,18 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 		sum += sample * sample;
 	}
 
-	stsf->audio_level = obs_mul_to_db(sqrtf(sum / nr_samples));
+
+	double audio_level = (double)obs_mul_to_db(sqrtf(sum / nr_samples));
+
+	if(smooth) {
+		smooth = 1 - smooth;
+
+	  if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
+
+		if(stsf->audio_level > audio_level) stsf->audio_level -= smooth;
+		else if(stsf->audio_level < audio_level) stsf->audio_level += smooth;
+	}
+	else stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
 }
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
@@ -103,6 +119,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 	return stsf;
 }
+
 static void filter_update(void *data, obs_data_t *settings)
 {
 	struct scale_to_sound_data *stsf = data;
@@ -130,6 +147,8 @@ static void filter_update(void *data, obs_data_t *settings)
 
 	stsf->invert = obs_data_get_bool(settings, STS_INVSCL);
 
+	stsf->smooth = obs_data_get_double(settings, STS_SMOOTH);
+
 	stsf->scale_w = obs_data_get_bool(settings, STS_SCALEW);
 	stsf->scale_h = obs_data_get_bool(settings, STS_SCALEH);
 
@@ -138,8 +157,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	stsf->max_w = w * max / 100;
 	stsf->max_h = h * max / 100;
 
-	double min_audio_level = obs_data_get_double(settings, STS_MINLVL);
-	stsf->minimum_audio_level = min_audio_level;
+	stsf->minimum_audio_level = obs_data_get_double(settings, STS_MINLVL);
 
 	obs_source_t *audio_source = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
 
@@ -154,6 +172,7 @@ static void filter_update(void *data, obs_data_t *settings)
 		obs_source_release(audio_source);
 	}
 }
+
 static void filter_load(void *data, obs_data_t *settings)
 {
 	struct scale_to_sound_data *stsf = data;
@@ -171,6 +190,7 @@ static bool enum_audio_sources(void *data, obs_source_t *source)
 	}
 	return true;
 }
+
 static obs_properties_t *filter_properties(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
@@ -192,11 +212,14 @@ static obs_properties_t *filter_properties(void *data)
 
 	obs_properties_add_bool(p, STS_INVSCL, "Inverse Scaling");
 
+	obs_properties_add_float_slider(p, STS_SMOOTH, "Smoothing", 0, 0.99, 0.01);
+
 	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
 	return p;
 }
+
 static void filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, STS_MINLVL, -40);
@@ -205,6 +228,8 @@ static void filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, STS_MAXPER, 100);
 
 	obs_data_set_default_bool(settings, STS_INVSCL, false);
+
+	obs_data_set_default_double(settings, STS_SMOOTH, 0);
 
 	obs_data_set_default_bool(settings, STS_SCALEW, true);
 	obs_data_set_default_bool(settings, STS_SCALEH, true);
@@ -224,7 +249,8 @@ static void filter_destroy(void *data)
 	bfree(stsf);
 }
 
-static void target_update(void *data, float seconds) {
+static void target_update(void *data, float seconds)
+{
 	UNUSED_PARAMETER(seconds);
 	
 	//!This should really be done using a signal but I could not get those working so here we are...
@@ -244,6 +270,7 @@ static void target_update(void *data, float seconds) {
 		obs_data_release(settings);
 	}
 }
+
 static void filter_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
