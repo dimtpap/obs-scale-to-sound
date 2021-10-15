@@ -20,12 +20,13 @@ Extract in `~/.config/obs-studio/plugins`
 If you're on Arch Linux or an Arch-based distro, you can get the [AUR package](https://aur.archlinux.org/packages/?O=0&K=obs-scale-to-sound).  
 Use the [AUR helper](https://wiki.archlinux.org/title/AUR_helpers) of your choice, or install it manually like this
 ```bash
-git clone https://aur.archlinux.org/obs-scale-to-sound-bin.git  
-cd obs-scale-to-sound-bin  
+# Pre-built binaries can be installed using the obs-scale-to-sound-bin package
+git clone https://aur.archlinux.org/obs-scale-to-sound.git  
+cd obs-scale-to-sound  
 makepkg -i
 ```
 
 # Thanks
-[brodi1](https://github.com/brodi1) for the [AUR Package](https://aur.archlinux.org/packages/?O=0&K=obs-scale-to-sound)  
+[brodi1](https://github.com/brodi1) and [tytan652](https://github.com/tytan652) for the [AUR Packages](https://aur.archlinux.org/packages/?O=0&K=obs-scale-to-sound)  
 [Exeldro](https://github.com/exeldro) for the GitHub Actions workflow  
 OBS Studio team and contributors for making such a great tool  
