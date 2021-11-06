@@ -40,6 +40,7 @@ struct scale_to_sound_data {
 	obs_source_t *target;
 
 	obs_property_t *sources_list;
+	obs_source_t *audio_source;
 	double minimum_audio_level;
 	bool invert;
 	long long min;
@@ -59,7 +60,6 @@ struct scale_to_sound_data {
 	double audio_level;
 
 	gs_effect_t *mover;
-	obs_source_t *audio_source;
 };
 
 static void calculate_audio_level(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
@@ -90,13 +90,12 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 		sum += sample * sample;
 	}
 
-
 	double audio_level = (double)obs_mul_to_db(sqrtf(sum / nr_samples));
 
 	if(smooth) {
 		smooth = 1 - smooth;
 
-	  if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
+		if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
 
 		if(stsf->audio_level > audio_level) stsf->audio_level -= smooth;
 		else if(stsf->audio_level < audio_level) stsf->audio_level += smooth;
@@ -252,10 +251,10 @@ static void filter_destroy(void *data)
 static void target_update(void *data, float seconds)
 {
 	UNUSED_PARAMETER(seconds);
-	
-	//!This should really be done using a signal but I could not get those working so here we are...
+
 	struct scale_to_sound_data *stsf = data;
 
+	//!This should really be done using a signal but I could not get those working so here we are...
 	obs_source_t *target = stsf->target;
 
 	uint32_t w = stsf->src_w;
