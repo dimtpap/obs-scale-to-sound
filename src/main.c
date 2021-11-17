@@ -92,9 +92,7 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	double audio_level = (double)obs_mul_to_db(sqrtf(sum / nr_samples));
 
-	if(smooth) {
-		smooth = 1 - smooth;
-
+	if(smooth < 1) {
 		if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
 
 		if(stsf->audio_level > audio_level) stsf->audio_level -= smooth;
@@ -146,7 +144,7 @@ static void filter_update(void *data, obs_data_t *settings)
 
 	stsf->invert = obs_data_get_bool(settings, STS_INVSCL);
 
-	stsf->smooth = obs_data_get_double(settings, STS_SMOOTH);
+	stsf->smooth = 1 - obs_data_get_double(settings, STS_SMOOTH);
 
 	stsf->scale_w = obs_data_get_bool(settings, STS_SCALEW);
 	stsf->scale_h = obs_data_get_bool(settings, STS_SCALEH);
