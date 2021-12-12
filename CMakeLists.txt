@@ -1,4 +1,4 @@
-project(scale-to-sound VERSION 1.0.0)
+project(scale-to-sound VERSION 1.1.0)
 
 set(scale-to-sound_SOURCES
   src/main.c)
