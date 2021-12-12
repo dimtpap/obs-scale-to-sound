@@ -22,6 +22,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #define STS_AUDSRC "STS_AUDSRC"
 #define STS_MINLVL "STS_MIN_LVL"
+#define STS_MAXLVL "STS_MAXLVL"
 #define STS_MINPER "STS_MINPER"
 #define STS_MAXPER "STS_MAXPER"
 #define STS_INVSCL "STS_INVSCL"
@@ -42,6 +43,8 @@ struct scale_to_sound_data {
 	obs_property_t *sources_list;
 	obs_source_t *audio_source;
 	double minimum_audio_level;
+	double maximum_audio_level;
+	double audio_range;
 	bool invert;
 	long long min;
 	long long max;
@@ -155,6 +158,21 @@ static void filter_update(void *data, obs_data_t *settings)
 	stsf->max_h = h * max / 100;
 
 	stsf->minimum_audio_level = obs_data_get_double(settings, STS_MINLVL);
+	double maximum_audio_level = obs_data_get_double(settings, STS_MAXLVL);
+	if (maximum_audio_level > stsf->minimum_audio_level) {
+		stsf->maximum_audio_level = maximum_audio_level;
+
+		double range = fabs(stsf->maximum_audio_level - stsf->minimum_audio_level);
+		if(range == 0) {
+			stsf->audio_range = 0.5f;
+		}
+		else stsf->audio_range = range;
+	}
+	else {
+		obs_data_set_double(settings, STS_MAXLVL, stsf->minimum_audio_level + 0.5f);
+		stsf->maximum_audio_level = stsf->minimum_audio_level + 0.5f;
+		stsf->audio_range = 0.5f;
+	}
 
 	obs_source_t *audio_source = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
 
@@ -201,6 +219,9 @@ static obs_properties_t *filter_properties(void *data)
 	obs_property_t *minlvl = obs_properties_add_float_slider(p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
 	obs_property_float_set_suffix(minlvl, "dB");
 
+	obs_property_t *maxlvl = obs_properties_add_float_slider(p, STS_MAXLVL, "Audio Ceiling", -99.5, 0, 0.5);
+	obs_property_float_set_suffix(maxlvl, "dB");
+
 	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 99, 1);
 	obs_property_int_set_suffix(minper, "%");
 
@@ -220,6 +241,7 @@ static obs_properties_t *filter_properties(void *data)
 static void filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, STS_MINLVL, -40);
+	obs_data_set_default_double(settings, STS_MAXLVL, 0);
 
 	obs_data_set_default_int(settings, STS_MINPER, 90);
 	obs_data_set_default_int(settings, STS_MAXPER, 100);
@@ -281,13 +303,17 @@ static void filter_render(void *data, gs_effect_t *effect)
 	uint32_t max_scale_percent = stsf->max;
 
 	double min_audio_level = stsf->minimum_audio_level;
+	double max_audio_level = stsf->maximum_audio_level;
+
+	double range = stsf->audio_range;
+
 	double audio_level = stsf->audio_level;
 
 	if(min_audio_level >= 0) min_audio_level = -0.5f;
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	//Scale the calculated from audio precentage down to the user-set range
-	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / fabs(min_audio_level) + min_scale_percent;
+	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / range + min_scale_percent;
 	if(scale_percent < min_scale_percent || audio_level >= 0) scale_percent = min_scale_percent;
 
 	if(stsf->invert) scale_percent = min_scale_percent + max_scale_percent - scale_percent;
