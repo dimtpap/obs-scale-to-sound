@@ -161,12 +161,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	double maximum_audio_level = obs_data_get_double(settings, STS_MAXLVL);
 	if (maximum_audio_level > stsf->minimum_audio_level) {
 		stsf->maximum_audio_level = maximum_audio_level;
-
-		double range = fabs(stsf->maximum_audio_level - stsf->minimum_audio_level);
-		if(range == 0) {
-			stsf->audio_range = 0.5f;
-		}
-		else stsf->audio_range = range;
+		stsf->audio_range = stsf->maximum_audio_level - stsf->minimum_audio_level;
 	}
 	else {
 		obs_data_set_double(settings, STS_MAXLVL, stsf->minimum_audio_level + 0.5f);
