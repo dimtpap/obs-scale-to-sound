@@ -1,6 +1,6 @@
 /*
 obs-scale-to-sound
-Copyright (C) 2021 Dimitris Papaioannou
+Copyright (C) 2021-2022 Dimitris Papaioannou
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
