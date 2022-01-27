@@ -214,7 +214,8 @@ static void filter_update(void *data, obs_data_t *settings)
 	}
 
 	obs_source_release(new_target);
-	obs_source_release(current_target);
+	
+	if (current_target) obs_source_release(current_target);
 }
 
 static void filter_load(void *data, obs_data_t *settings)
