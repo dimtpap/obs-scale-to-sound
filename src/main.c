@@ -1,6 +1,6 @@
 /*
 obs-scale-to-sound
-Copyright (C) 2021 Dimitris Papaioannou
+Copyright (C) 2021-2022 Dimitris Papaioannou
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ struct scale_to_sound_data {
 	obs_source_t *target;
 
 	obs_property_t *sources_list;
-	obs_source_t *audio_source;
+	obs_weak_source_t *audio_source;
 	double minimum_audio_level;
 	double maximum_audio_level;
 	double audio_range;
@@ -72,7 +72,6 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	struct scale_to_sound_data *stsf = param;
 
 	double min_audio_level = stsf->minimum_audio_level;
-	double smooth = stsf->smooth;
 
 	if(muted) {
 		stsf->audio_level = min_audio_level;
@@ -95,6 +94,7 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	double audio_level = (double)obs_mul_to_db(sqrtf(sum / nr_samples));
 
+	double smooth = stsf->smooth;
 	if(smooth < 1) {
 		if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
 
@@ -104,13 +104,32 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	else stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
 }
 
+static void target_remove(void *data, calldata_t *call_data) {
+	struct scale_to_sound_data *stsf = data;
+
+	obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
+
+	obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
+
+	signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
+	signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
+
+	obs_source_release(current_target);
+
+	obs_weak_source_release(stsf->audio_source);
+	stsf->audio_source = NULL;
+
+	stsf->scale_h = false;
+	stsf->scale_w = false;
+}
+
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
 {
 	UNUSED_PARAMETER(settings);
 
 	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
 	stsf->context = source;
-
+	
 	char *effect_file = obs_module_file("default_move.effect");
 	obs_enter_graphics();
 	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
@@ -161,12 +180,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	double maximum_audio_level = obs_data_get_double(settings, STS_MAXLVL);
 	if (maximum_audio_level > stsf->minimum_audio_level) {
 		stsf->maximum_audio_level = maximum_audio_level;
-
-		double range = fabs(stsf->maximum_audio_level - stsf->minimum_audio_level);
-		if(range == 0) {
-			stsf->audio_range = 0.5f;
-		}
-		else stsf->audio_range = range;
+		stsf->audio_range = stsf->maximum_audio_level - stsf->minimum_audio_level;
 	}
 	else {
 		obs_data_set_double(settings, STS_MAXLVL, stsf->minimum_audio_level + 0.5f);
@@ -174,24 +188,39 @@ static void filter_update(void *data, obs_data_t *settings)
 		stsf->audio_range = 0.5f;
 	}
 
-	obs_source_t *audio_source = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
+	obs_source_t *new_target = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
 
-	if (stsf->audio_source != audio_source) {
-		obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
-		obs_source_release(stsf->audio_source);
-		obs_source_add_audio_capture_callback(audio_source, calculate_audio_level, stsf);
+	obs_source_t *current_target = NULL;
+	if (stsf->audio_source)
+		current_target = obs_weak_source_get_source(stsf->audio_source);
 
-		stsf->audio_source = audio_source;
+	if (current_target != new_target) {
+		signal_handler_t *sig_handler;
+		if (current_target) {
+			sig_handler = obs_source_get_signal_handler(current_target);
+			signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
+
+			obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
+
+			obs_weak_source_release(stsf->audio_source);
+		}
+
+		sig_handler = obs_source_get_signal_handler(new_target);
+		signal_handler_connect(sig_handler, "destroy", target_remove, stsf);
+
+		obs_source_add_audio_capture_callback(new_target, calculate_audio_level, stsf);
+
+		stsf->audio_source = obs_source_get_weak_source(new_target);
 	}
-	else {
-		obs_source_release(audio_source);
-	}
+
+	obs_source_release(new_target);
+	
+	if (current_target) obs_source_release(current_target);
 }
 
 static void filter_load(void *data, obs_data_t *settings)
 {
-	struct scale_to_sound_data *stsf = data;
-	filter_update(stsf, settings);
+	filter_update(data, settings);
 }
 
 static bool enum_audio_sources(void *data, obs_source_t *source)
@@ -258,8 +287,17 @@ static void filter_destroy(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
 
-	obs_source_remove_audio_capture_callback(stsf->audio_source, calculate_audio_level, stsf);
-	obs_source_release(stsf->audio_source);
+	if (stsf->audio_source) {
+		obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
+
+		signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
+		signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
+
+		obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
+
+		obs_source_release(current_target);
+		obs_weak_source_release(stsf->audio_source);
+	}
 
 	obs_enter_graphics();
 	gs_effect_destroy(stsf->mover);
@@ -343,7 +381,7 @@ static void filter_render(void *data, gs_effect_t *effect)
 		audio_h = 1;
 	}
 
-	//Change the position everytime so it looks like it's scaling from the center
+	//Change the position every time so it looks like it's scaling from the center
 	struct vec4 move_vec;
 	vec4_set(&move_vec, (w - audio_w) / 2, (h - audio_h) / 2, 0.0f, 0.0f);
 
