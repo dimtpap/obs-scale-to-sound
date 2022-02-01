@@ -107,15 +107,6 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 static void target_remove(void *data, calldata_t *call_data) {
 	struct scale_to_sound_data *stsf = data;
 
-	obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
-
-	obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
-
-	signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
-	signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
-
-	obs_source_release(current_target);
-
 	obs_weak_source_release(stsf->audio_source);
 	stsf->audio_source = NULL;
 
