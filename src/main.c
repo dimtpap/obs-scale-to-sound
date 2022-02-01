@@ -104,17 +104,8 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	else stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
 }
 
-static void target_remove(void *data, calldata_t *call_data) {
+static void audio_source_destroy(void *data, calldata_t *call_data) {
 	struct scale_to_sound_data *stsf = data;
-
-	obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
-
-	obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
-
-	signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
-	signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
-
-	obs_source_release(current_target);
 
 	obs_weak_source_release(stsf->audio_source);
 	stsf->audio_source = NULL;
@@ -198,7 +189,7 @@ static void filter_update(void *data, obs_data_t *settings)
 		signal_handler_t *sig_handler;
 		if (current_target) {
 			sig_handler = obs_source_get_signal_handler(current_target);
-			signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
+			signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
 
 			obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
 
@@ -206,7 +197,7 @@ static void filter_update(void *data, obs_data_t *settings)
 		}
 
 		sig_handler = obs_source_get_signal_handler(new_target);
-		signal_handler_connect(sig_handler, "destroy", target_remove, stsf);
+		signal_handler_connect(sig_handler, "destroy", audio_source_destroy, stsf);
 
 		obs_source_add_audio_capture_callback(new_target, calculate_audio_level, stsf);
 
@@ -291,7 +282,7 @@ static void filter_destroy(void *data)
 		obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
 
 		signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
-		signal_handler_disconnect(sig_handler, "destroy", target_remove, stsf);
+		signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
 
 		obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
 
