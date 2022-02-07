@@ -29,6 +29,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_SMOOTH "STS_SMOOTH"
 #define STS_SCALEW "STS_SCALEW"
 #define STS_SCALEH "STS_SCALEH"
+#define STS_XPOSAL "STS_XPOSAL"
+#define STS_YPOSAL "STS_YPOSAL"
 
 OBS_DECLARE_MODULE()
 const char *get_source_name(void *unused)
@@ -36,6 +38,13 @@ const char *get_source_name(void *unused)
 	UNUSED_PARAMETER(unused);
 	return SOURCE_NAME;
 }
+
+enum positional_alignment {
+	BEGINNING = 0,
+	CENTER = 1,
+	END = 2
+};
+
 struct scale_to_sound_data {
 	obs_source_t *context;
 	obs_source_t *target;
@@ -51,6 +60,8 @@ struct scale_to_sound_data {
 	double smooth;
 	bool scale_w;
 	bool scale_h;
+	enum positional_alignment x_pos_alignment;
+	enum positional_alignment y_pos_alignment;
 
 	uint32_t src_w;
 	uint32_t src_h;
@@ -167,6 +178,9 @@ static void filter_update(void *data, obs_data_t *settings)
 	stsf->max_w = w * max / 100;
 	stsf->max_h = h * max / 100;
 
+	stsf->x_pos_alignment = obs_data_get_int(settings, STS_XPOSAL);
+	stsf->y_pos_alignment = obs_data_get_int(settings, STS_YPOSAL);
+
 	stsf->minimum_audio_level = obs_data_get_double(settings, STS_MINLVL);
 	double maximum_audio_level = obs_data_get_double(settings, STS_MAXLVL);
 	if (maximum_audio_level > stsf->minimum_audio_level) {
@@ -255,6 +269,16 @@ static obs_properties_t *filter_properties(void *data)
 	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
+	obs_property_t *x_pos_alignment = obs_properties_add_list(p, STS_XPOSAL, "X Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(x_pos_alignment, "Left", BEGINNING);
+	obs_property_list_add_int(x_pos_alignment, "Center", CENTER);
+	obs_property_list_add_int(x_pos_alignment, "Right", END);
+
+	obs_property_t *y_pos_alignment = obs_properties_add_list(p, STS_YPOSAL, "Y Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(y_pos_alignment, "Top", BEGINNING);
+	obs_property_list_add_int(y_pos_alignment, "Center", CENTER);
+	obs_property_list_add_int(y_pos_alignment, "Bottom", END);
+
 	return p;
 }
 
@@ -272,6 +296,9 @@ static void filter_defaults(obs_data_t *settings)
 
 	obs_data_set_default_bool(settings, STS_SCALEW, true);
 	obs_data_set_default_bool(settings, STS_SCALEH, true);
+
+	obs_data_set_default_int(settings, STS_XPOSAL, CENTER);
+	obs_data_set_default_int(settings, STS_YPOSAL, CENTER);
 }
 
 static void filter_destroy(void *data)
@@ -319,6 +346,20 @@ static void target_update(void *data, float seconds)
 	}
 }
 
+static float determine_position(int i, int target, enum positional_alignment option) {
+	switch(option) {
+	case BEGINNING:
+		return 0;
+		break;
+	case END:
+		return i - target;
+		break;
+	case CENTER:
+	default:
+		return (i - target) / 2;
+		break;
+	}
+}
 static void filter_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
@@ -372,9 +413,11 @@ static void filter_render(void *data, gs_effect_t *effect)
 		audio_h = 1;
 	}
 
-	//Change the position every time so it looks like it's scaling from the center
+	float x_pos = determine_position(w, audio_w, stsf->x_pos_alignment);
+	float y_pos = determine_position(h, audio_h, stsf->y_pos_alignment);
+
 	struct vec4 move_vec;
-	vec4_set(&move_vec, (w - audio_w) / 2, (h - audio_h) / 2, 0.0f, 0.0f);
+	vec4_set(&move_vec, x_pos, y_pos, 0.0f, 0.0f);
 
 	gs_effect_set_vec4(move_val, &move_vec);
 
