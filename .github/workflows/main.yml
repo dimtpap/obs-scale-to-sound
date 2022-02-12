@@ -3,7 +3,7 @@ name: Build Plugin
 on:
   push:
     branches: [main, dev, actions]
-    paths: ['src/**', 'data/**', '.github/workflows/**']
+    paths: ['src/**', 'data/**', '.github/workflows/**', 'CMakeLists.txt']
 
 env:
   PLUGIN_NAME: scale-to-sound
