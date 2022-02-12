@@ -13,6 +13,11 @@ target_link_libraries(scale-to-sound libobs)
 
 if(BUILD_STANDALONE)
 	set_target_properties(scale-to-sound PROPERTIES PREFIX "")
+
+    install(TARGETS scale-to-sound
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/obs-plugins)
+    install(DIRECTORY data
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/scale-to-sound)
 else()
 	set_target_properties(scale-to-sound PROPERTIES FOLDER "plugins")
 
