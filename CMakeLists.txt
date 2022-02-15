@@ -16,7 +16,7 @@ if(BUILD_STANDALONE)
 
     install(TARGETS scale-to-sound
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/obs-plugins)
-    install(DIRECTORY data
+    install(FILES data/default_move.effect
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/scale-to-sound)
 else()
 	set_target_properties(scale-to-sound PROPERTIES FOLDER "plugins")
