@@ -16,7 +16,9 @@ Extract in `/Library/Application Support/obs-studio/plugins`
 
 ### Linux
 Extract in `~/.config/obs-studio/plugins`  
-
+#### Flatpak
+Available in Flathub: https://flathub.org/apps/details/com.obsproject.Studio.Plugin.ScaleToSound  
+#### AUR
 If you're on Arch Linux or an Arch-based distro, you can get the [AUR package](https://aur.archlinux.org/packages/?O=0&K=obs-scale-to-sound).  
 Use the [AUR helper](https://wiki.archlinux.org/title/AUR_helpers) of your choice, or install it manually like this
 ```bash
