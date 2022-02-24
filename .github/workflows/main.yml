@@ -101,7 +101,7 @@ jobs:
 
   windows:
     name: Windows Build
-    runs-on: [windows-latest]
+    runs-on: [windows-2019]
     env:
       QT_VERSION: '5.15.2'
       CMAKE_GENERATOR: "Visual Studio 16 2019"
