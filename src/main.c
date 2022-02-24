@@ -17,6 +17,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
 #include <obs-module.h>
+#include <util/platform.h>
 
 #define SOURCE_NAME "Scale To Sound"
 
@@ -71,6 +72,7 @@ struct scale_to_sound_data {
 	long long max_w;
 	long long max_h;
 
+	uint64_t last_update_ts;
 	double audio_level;
 
 	gs_effect_t *mover;
@@ -81,6 +83,8 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	UNUSED_PARAMETER(source);
 
 	struct scale_to_sound_data *stsf = param;
+
+	stsf->last_update_ts = os_gettime_ns();
 
 	double min_audio_level = stsf->minimum_audio_level;
 
@@ -380,9 +384,15 @@ static void filter_render(void *data, gs_effect_t *effect)
 	double audio_level = stsf->audio_level;
 
 	if(min_audio_level >= 0) min_audio_level = -0.5f;
+
+	if(stsf->audio_level > stsf->minimum_audio_level && os_gettime_ns() - stsf->last_update_ts > 500000000) { //0.5s timeout
+		if(stsf->smooth < 1) stsf->audio_level -= stsf->smooth;
+		else stsf->audio_level = stsf->minimum_audio_level;
+	}
+
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
-	//Scale the calculated from audio precentage down to the user-set range
+	//Scale the calculated from audio percentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / range + min_scale_percent;
 	if(scale_percent < min_scale_percent || audio_level >= 0) scale_percent = min_scale_percent;
 
@@ -395,7 +405,7 @@ static void filter_render(void *data, gs_effect_t *effect)
 		audio_w = stsf->scale_w ? stsf->min_w : w;
 		audio_h = stsf->scale_h ? stsf->min_h : h;
 	}
-	
+
 	if(audio_w > stsf->max_w) audio_w = stsf->scale_w ? stsf->max_w : w;
 	if(audio_h > stsf->max_h) audio_h = stsf->scale_h ? stsf->max_h : h;
 
