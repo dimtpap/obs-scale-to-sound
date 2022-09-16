@@ -76,6 +76,8 @@ struct scale_to_sound_data {
 	double audio_level;
 
 	gs_effect_t *mover;
+	gs_eparam_t *param_show;
+	gs_eparam_t *param_pos;
 };
 
 static void calculate_audio_level(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
@@ -141,6 +143,14 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
 	obs_leave_graphics();
 	bfree(effect_file);
+
+	if (!stsf->mover) {
+		bfree(stsf);
+		return NULL;
+	}
+
+	stsf->param_pos = gs_effect_get_param_by_name(stsf->mover, "inputPos");
+	stsf->param_show = gs_effect_get_param_by_name(stsf->mover, "show");
 
 	return stsf;
 }
@@ -412,13 +422,9 @@ static void filter_render(void *data, gs_effect_t *effect)
 	obs_enter_graphics();
 	obs_source_process_filter_begin(stsf->context, GS_RGBA, OBS_ALLOW_DIRECT_RENDERING);
 
-	gs_effect_t *move_effect = stsf->mover;
-	gs_eparam_t *move_val = gs_effect_get_param_by_name(move_effect, "inputPos");
-	gs_eparam_t *show = gs_effect_get_param_by_name(move_effect, "show");
-
-	gs_effect_set_float(show, 1.0f);
+	gs_effect_set_float(stsf->param_show, 1.0f);
 	if(audio_w <= 0 || audio_h <= 0) {
-		gs_effect_set_float(show, 0.0f);
+		gs_effect_set_float(stsf->param_show, 0.0f);
 		audio_w = 1;
 		audio_h = 1;
 	}
@@ -429,9 +435,9 @@ static void filter_render(void *data, gs_effect_t *effect)
 	struct vec4 move_vec;
 	vec4_set(&move_vec, x_pos, y_pos, 0.0f, 0.0f);
 
-	gs_effect_set_vec4(move_val, &move_vec);
+	gs_effect_set_vec4(stsf->param_pos, &move_vec);
 
-	obs_source_process_filter_end(stsf->context, move_effect, audio_w, audio_h);
+	obs_source_process_filter_end(stsf->context, stsf->mover, audio_w, audio_h);
 	obs_leave_graphics();
 }
 
