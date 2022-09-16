@@ -40,11 +40,7 @@ const char *get_source_name(void *unused)
 	return SOURCE_NAME;
 }
 
-enum positional_alignment {
-	BEGINNING = 0,
-	CENTER = 1,
-	END = 2
-};
+enum positional_alignment { BEGINNING = 0, CENTER = 1, END = 2 };
 
 struct scale_to_sound_data {
 	obs_source_t *context;
@@ -90,7 +86,7 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 
 	double min_audio_level = stsf->minimum_audio_level;
 
-	if(muted) {
+	if (muted) {
 		stsf->audio_level = min_audio_level;
 		return;
 	}
@@ -112,16 +108,21 @@ static void calculate_audio_level(void *param, obs_source_t *source, const struc
 	double audio_level = (double)obs_mul_to_db(sqrtf(sum / nr_samples));
 
 	double smooth = stsf->smooth;
-	if(smooth < 1) {
-		if(stsf->audio_level < min_audio_level) stsf->audio_level = min_audio_level;
+	if (smooth < 1) {
+		if (stsf->audio_level < min_audio_level)
+			stsf->audio_level = min_audio_level;
 
-		if(stsf->audio_level > audio_level) stsf->audio_level -= smooth;
-		else if(stsf->audio_level < audio_level) stsf->audio_level += smooth;
+		if (stsf->audio_level > audio_level)
+			stsf->audio_level -= smooth;
+		else if (stsf->audio_level < audio_level)
+			stsf->audio_level += smooth;
+	} else {
+		stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
 	}
-	else stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
 }
 
-static void audio_source_destroy(void *data, calldata_t *call_data) {
+static void audio_source_destroy(void *data, calldata_t *call_data)
+{
 	struct scale_to_sound_data *stsf = data;
 
 	obs_weak_source_release(stsf->audio_source);
@@ -137,7 +138,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
 	stsf->context = source;
-	
+
 	char *effect_file = obs_module_file("default_move.effect");
 	obs_enter_graphics();
 	stsf->mover = gs_effect_create_from_file(effect_file, NULL);
@@ -174,8 +175,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	if (max <= min) {
 		obs_data_set_int(settings, STS_MAXPER, min + 1);
 		stsf->max = min + 1;
-	}
-	else {
+	} else {
 		stsf->max = max;
 	}
 	stsf->min = min;
@@ -200,8 +200,7 @@ static void filter_update(void *data, obs_data_t *settings)
 	if (maximum_audio_level > stsf->minimum_audio_level) {
 		stsf->maximum_audio_level = maximum_audio_level;
 		stsf->audio_range = stsf->maximum_audio_level - stsf->minimum_audio_level;
-	}
-	else {
+	} else {
 		obs_data_set_double(settings, STS_MAXLVL, stsf->minimum_audio_level + 0.5f);
 		stsf->maximum_audio_level = stsf->minimum_audio_level + 0.5f;
 		stsf->audio_range = 0.5f;
@@ -233,8 +232,10 @@ static void filter_update(void *data, obs_data_t *settings)
 	}
 
 	obs_source_release(new_target);
-	
-	if (current_target) obs_source_release(current_target);
+
+	if (current_target) {
+		obs_source_release(current_target);
+	}
 }
 
 static void filter_load(void *data, obs_data_t *settings)
@@ -260,7 +261,8 @@ static obs_properties_t *filter_properties(void *data)
 
 	obs_properties_t *p = obs_properties_create();
 
-	obs_property_t *sources = obs_properties_add_list(p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_t *sources =
+		obs_properties_add_list(p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	stsf->sources_list = sources;
 	obs_enum_sources(enum_audio_sources, stsf);
 
@@ -283,12 +285,14 @@ static obs_properties_t *filter_properties(void *data)
 	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
-	obs_property_t *x_pos_alignment = obs_properties_add_list(p, STS_XPOSAL, "X Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_t *x_pos_alignment =
+		obs_properties_add_list(p, STS_XPOSAL, "X Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(x_pos_alignment, "Left", BEGINNING);
 	obs_property_list_add_int(x_pos_alignment, "Center", CENTER);
 	obs_property_list_add_int(x_pos_alignment, "Right", END);
 
-	obs_property_t *y_pos_alignment = obs_properties_add_list(p, STS_YPOSAL, "Y Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_t *y_pos_alignment =
+		obs_properties_add_list(p, STS_YPOSAL, "Y Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(y_pos_alignment, "Top", BEGINNING);
 	obs_property_list_add_int(y_pos_alignment, "Center", CENTER);
 	obs_property_list_add_int(y_pos_alignment, "Bottom", END);
@@ -353,15 +357,16 @@ static void target_update(void *data, float seconds)
 	uint32_t new_w = obs_source_get_base_width(target);
 	uint32_t new_h = obs_source_get_base_height(target);
 
-	if(new_w != w || new_h != h) {
+	if (new_w != w || new_h != h) {
 		obs_data_t *settings = obs_source_get_settings(stsf->context);
 		filter_update(stsf, settings);
 		obs_data_release(settings);
 	}
 }
 
-static float determine_position(int i, int target, enum positional_alignment option) {
-	switch(option) {
+static float determine_position(int i, int target, enum positional_alignment option)
+{
+	switch (option) {
 	case BEGINNING:
 		return 0;
 		break;
@@ -374,6 +379,7 @@ static float determine_position(int i, int target, enum positional_alignment opt
 		break;
 	}
 }
+
 static void filter_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
@@ -393,37 +399,50 @@ static void filter_render(void *data, gs_effect_t *effect)
 
 	double audio_level = stsf->audio_level;
 
-	if(min_audio_level >= 0) min_audio_level = -0.5f;
+	if (min_audio_level >= 0) {
+		min_audio_level = -0.5f;
+	}
 
-	if(stsf->audio_level > stsf->minimum_audio_level && os_gettime_ns() - stsf->last_update_ts > 500000000) { //0.5s timeout
-		if(stsf->smooth < 1) stsf->audio_level -= stsf->smooth;
-		else stsf->audio_level = stsf->minimum_audio_level;
+	if (stsf->audio_level > stsf->minimum_audio_level &&
+		os_gettime_ns() - stsf->last_update_ts > 500000000) { //0.5s timeout
+		if (stsf->smooth < 1)
+			stsf->audio_level -= stsf->smooth;
+		else
+			stsf->audio_level = stsf->minimum_audio_level;
 	}
 
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	//Scale the calculated from audio percentage down to the user-set range
 	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / range + min_scale_percent;
-	if(scale_percent < min_scale_percent || audio_level >= 0) scale_percent = min_scale_percent;
+	if (scale_percent < min_scale_percent || audio_level >= 0) {
+		scale_percent = min_scale_percent;
+	}
 
-	if(stsf->invert) scale_percent = min_scale_percent + max_scale_percent - scale_percent;
+	if (stsf->invert) {
+		scale_percent = min_scale_percent + max_scale_percent - scale_percent;
+	}
 
 	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
 	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
 
-	if((audio_level < min_audio_level && !stsf->invert) || audio_w < stsf->min_w || audio_h < stsf->min_h) {
+	if ((audio_level < min_audio_level && !stsf->invert) || audio_w < stsf->min_w || audio_h < stsf->min_h) {
 		audio_w = stsf->scale_w ? stsf->min_w : w;
 		audio_h = stsf->scale_h ? stsf->min_h : h;
 	}
 
-	if(audio_w > stsf->max_w) audio_w = stsf->scale_w ? stsf->max_w : w;
-	if(audio_h > stsf->max_h) audio_h = stsf->scale_h ? stsf->max_h : h;
+	if (audio_w > stsf->max_w) {
+		audio_w = stsf->scale_w ? stsf->max_w : w;
+	}
+	if (audio_h > stsf->max_h) {
+		audio_h = stsf->scale_h ? stsf->max_h : h;
+	}
 
 	obs_enter_graphics();
 	obs_source_process_filter_begin(stsf->context, GS_RGBA, OBS_ALLOW_DIRECT_RENDERING);
 
 	gs_effect_set_float(stsf->param_show, 1.0f);
-	if(audio_w <= 0 || audio_h <= 0) {
+	if (audio_w <= 0 || audio_h <= 0) {
 		gs_effect_set_float(stsf->param_show, 0.0f);
 		audio_w = 1;
 		audio_h = 1;
@@ -441,20 +460,18 @@ static void filter_render(void *data, gs_effect_t *effect)
 	obs_leave_graphics();
 }
 
-struct obs_source_info scale_to_sound = {
-	.id = "scale_to_sound",
-	.type = OBS_SOURCE_TYPE_FILTER,
-	.output_flags = OBS_SOURCE_VIDEO,
-	.get_name = get_source_name,
-	.get_defaults = filter_defaults,
-	.get_properties = filter_properties,
-	.create = filter_create,
-	.load = filter_load,
-	.update = filter_update,
-	.video_tick = target_update,
-	.video_render = filter_render,
-	.destroy = filter_destroy
-};
+struct obs_source_info scale_to_sound = {.id = "scale_to_sound",
+										 .type = OBS_SOURCE_TYPE_FILTER,
+										 .output_flags = OBS_SOURCE_VIDEO,
+										 .get_name = get_source_name,
+										 .get_defaults = filter_defaults,
+										 .get_properties = filter_properties,
+										 .create = filter_create,
+										 .load = filter_load,
+										 .update = filter_update,
+										 .video_tick = target_update,
+										 .video_render = filter_render,
+										 .destroy = filter_destroy};
 
 bool obs_module_load(void)
 {
