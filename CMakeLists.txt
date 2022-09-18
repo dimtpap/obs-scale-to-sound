@@ -5,11 +5,18 @@ set(scale-to-sound_SOURCES
   src/main.c)
 
 if(BUILD_STANDALONE)
+  find_package(libobs REQUIRED)
+else()
   find_package(LibObs REQUIRED)
 endif()
 
 add_library(scale-to-sound MODULE ${scale-to-sound_SOURCES})
-target_link_libraries(scale-to-sound libobs)
+
+if(BUILD_STANDALONE)
+  target_link_libraries(scale-to-sound OBS::libobs)
+else()
+  target_link_libraries(scale-to-sound libobs)
+endif()
 
 if(BUILD_STANDALONE)
 	set_target_properties(scale-to-sound PROPERTIES PREFIX "")
