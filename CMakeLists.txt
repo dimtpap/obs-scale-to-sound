@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
-project(scale-to-sound VERSION 1.2.0)
+project(scale-to-sound VERSION)
 
 set(scale-to-sound_SOURCES
-  src/main.c)
+  src/scale-to-sound.c)
 
 if(BUILD_STANDALONE)
   find_package(libobs REQUIRED)
-else()
-  find_package(LibObs REQUIRED)
 endif()
 
 add_library(scale-to-sound MODULE ${scale-to-sound_SOURCES})

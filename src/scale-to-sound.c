@@ -34,7 +34,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_YPOSAL "STS_YPOSAL"
 
 OBS_DECLARE_MODULE()
-const char *get_source_name(void *unused)
+const char *scale_to_sound_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return SOURCE_NAME;
@@ -76,7 +76,7 @@ struct scale_to_sound_data {
 	gs_eparam_t *param_pos;
 };
 
-static void calculate_audio_level(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
+static void audio_source_capture_callback(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
 {
 	UNUSED_PARAMETER(source);
 
@@ -132,11 +132,11 @@ static void audio_source_destroy(void *data, calldata_t *call_data)
 	stsf->scale_w = false;
 }
 
-static void *filter_create(obs_data_t *settings, obs_source_t *source)
+static void *scale_to_sound_create(obs_data_t *settings, obs_source_t *source)
 {
 	UNUSED_PARAMETER(settings);
 
-	struct scale_to_sound_data *stsf = bzalloc(sizeof(*stsf));
+	struct scale_to_sound_data *stsf = bzalloc(sizeof(struct scale_to_sound_data));
 	stsf->context = source;
 
 	char *effect_file = obs_module_file("default_move.effect");
@@ -156,7 +156,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	return stsf;
 }
 
-static void filter_update(void *data, obs_data_t *settings)
+static void scale_to_sound_update(void *data, obs_data_t *settings)
 {
 	struct scale_to_sound_data *stsf = data;
 
@@ -218,7 +218,7 @@ static void filter_update(void *data, obs_data_t *settings)
 			sig_handler = obs_source_get_signal_handler(current_target);
 			signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
 
-			obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
+			obs_source_remove_audio_capture_callback(current_target, audio_source_capture_callback, stsf);
 
 			obs_weak_source_release(stsf->audio_source);
 		}
@@ -226,7 +226,7 @@ static void filter_update(void *data, obs_data_t *settings)
 		sig_handler = obs_source_get_signal_handler(new_target);
 		signal_handler_connect(sig_handler, "destroy", audio_source_destroy, stsf);
 
-		obs_source_add_audio_capture_callback(new_target, calculate_audio_level, stsf);
+		obs_source_add_audio_capture_callback(new_target, audio_source_capture_callback, stsf);
 
 		stsf->audio_source = obs_source_get_weak_source(new_target);
 	}
@@ -238,9 +238,9 @@ static void filter_update(void *data, obs_data_t *settings)
 	}
 }
 
-static void filter_load(void *data, obs_data_t *settings)
+static void scale_to_sound_load(void *data, obs_data_t *settings)
 {
-	filter_update(data, settings);
+	scale_to_sound_update(data, settings);
 }
 
 static bool enum_audio_sources(void *data, obs_source_t *source)
@@ -255,7 +255,7 @@ static bool enum_audio_sources(void *data, obs_source_t *source)
 	return true;
 }
 
-static obs_properties_t *filter_properties(void *data)
+static obs_properties_t *scale_to_sound_properties(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
 
@@ -300,7 +300,7 @@ static obs_properties_t *filter_properties(void *data)
 	return p;
 }
 
-static void filter_defaults(obs_data_t *settings)
+static void scale_to_sound_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, STS_MINLVL, -40);
 	obs_data_set_default_double(settings, STS_MAXLVL, 0);
@@ -319,7 +319,7 @@ static void filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, STS_YPOSAL, CENTER);
 }
 
-static void filter_destroy(void *data)
+static void scale_to_sound_destroy(void *data)
 {
 	struct scale_to_sound_data *stsf = data;
 
@@ -329,7 +329,7 @@ static void filter_destroy(void *data)
 		signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
 		signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
 
-		obs_source_remove_audio_capture_callback(current_target, calculate_audio_level, stsf);
+		obs_source_remove_audio_capture_callback(current_target, audio_source_capture_callback, stsf);
 
 		obs_source_release(current_target);
 		obs_weak_source_release(stsf->audio_source);
@@ -342,7 +342,7 @@ static void filter_destroy(void *data)
 	bfree(stsf);
 }
 
-static void target_update(void *data, float seconds)
+static void scale_to_sound_tick(void *data, float seconds)
 {
 	UNUSED_PARAMETER(seconds);
 
@@ -359,7 +359,7 @@ static void target_update(void *data, float seconds)
 
 	if (new_w != w || new_h != h) {
 		obs_data_t *settings = obs_source_get_settings(stsf->context);
-		filter_update(stsf, settings);
+		scale_to_sound_update(stsf, settings);
 		obs_data_release(settings);
 	}
 }
@@ -380,7 +380,7 @@ static float determine_position(int i, int target, enum positional_alignment opt
 	}
 }
 
-static void filter_render(void *data, gs_effect_t *effect)
+static void scale_to_sound_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
 
@@ -460,18 +460,20 @@ static void filter_render(void *data, gs_effect_t *effect)
 	obs_leave_graphics();
 }
 
-struct obs_source_info scale_to_sound = {.id = "scale_to_sound",
-										 .type = OBS_SOURCE_TYPE_FILTER,
-										 .output_flags = OBS_SOURCE_VIDEO,
-										 .get_name = get_source_name,
-										 .get_defaults = filter_defaults,
-										 .get_properties = filter_properties,
-										 .create = filter_create,
-										 .load = filter_load,
-										 .update = filter_update,
-										 .video_tick = target_update,
-										 .video_render = filter_render,
-										 .destroy = filter_destroy};
+struct obs_source_info scale_to_sound = {
+	.id = "scale_to_sound",
+	.type = OBS_SOURCE_TYPE_FILTER,
+	.output_flags = OBS_SOURCE_VIDEO,
+	.get_name = scale_to_sound_name,
+	.get_defaults = scale_to_sound_defaults,
+	.get_properties = scale_to_sound_properties,
+	.create = scale_to_sound_create,
+	.load = scale_to_sound_load,
+	.update = scale_to_sound_update,
+	.video_tick = scale_to_sound_tick,
+	.video_render = scale_to_sound_render,
+	.destroy = scale_to_sound_destroy,
+};
 
 bool obs_module_load(void)
 {
