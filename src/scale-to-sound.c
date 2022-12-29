@@ -460,7 +460,7 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	obs_leave_graphics();
 }
 
-struct obs_source_info scale_to_sound = {
+const struct obs_source_info scale_to_sound = {
 	.id = "scale_to_sound",
 	.type = OBS_SOURCE_TYPE_FILTER,
 	.output_flags = OBS_SOURCE_VIDEO,
