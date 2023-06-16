@@ -5,6 +5,8 @@ add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 set(PLUGIN_AUTHOR "Dimitris Papaioannou")
 
+set(PLUGIN_WEBSITE "https://github.com/dimtpap/obs-scale-to-sound")
+
 set(MACOS_BUNDLEID "xyz.dimtpap.${CMAKE_PROJECT_NAME}")
 
 set(LINUX_MAINTAINER_EMAIL "dimtpap@protonmail.com")
