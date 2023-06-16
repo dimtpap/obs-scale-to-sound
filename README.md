@@ -5,17 +5,12 @@ There are a few properties so you can fine tune how it behaves
 ![Properties](https://dimtpap.xyz/obs-scale-to-sound/plugin-properties.png)  
 [OBS forums post](https://obsproject.com/forum/resources/scale-to-sound.1336/)  
 This plugin is not extensively tested, you may come across bugs
-# Installation
-Get the archive for your OS from the [releases](https://github.com/dimtpap/obs-scale-to-sound/releases).  
-### Windows
-Make sure the folders get merged. Be careful to not overwrite the existing folders with the ones in the zip file  
-Extract in the OBS installation folder, default is `C:\Program Files\obs-studio`
 
-### macOS
-Extract in `/Library/Application Support/obs-studio/plugins`
-
+## Installation
+Get the archive/installer for your OS from the [latest release](https://github.com/dimtpap/obs-scale-to-sound/releases/latest).  
 ### Linux
-Extract in `~/.config/obs-studio/plugins`  
+The archive is for installing in the home directory  
+Extract it in `~/.config/obs-studio/plugins`  
 #### Flatpak
 Available in Flathub. You can find it on OBS Studio's page under Add-ons.  
 #### AUR
