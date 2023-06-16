@@ -1,14 +1,13 @@
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
+*~
+.DS_Store
+/build/
+/build_*/
+/release/
+/installer/Output/
 
 .vscode
-build
+.idea
+
+# ignore generated files
+*.generated.*
+**/.Brewfile.lock.json

@@ -123,6 +123,8 @@ static void audio_source_capture_callback(void *param, obs_source_t *source, con
 
 static void audio_source_destroy(void *data, calldata_t *call_data)
 {
+	UNUSED_PARAMETER(call_data);
+
 	struct scale_to_sound_data *stsf = data;
 
 	obs_weak_source_release(stsf->audio_source);
@@ -371,11 +373,11 @@ static float determine_position(int i, int target, enum positional_alignment opt
 		return 0;
 		break;
 	case END:
-		return i - target;
+		return (float)i - target;
 		break;
 	case CENTER:
 	default:
-		return (i - target) / 2;
+		return (float)(i - target) / 2;
 		break;
 	}
 }
@@ -389,11 +391,10 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	uint32_t w = stsf->src_w;
 	uint32_t h = stsf->src_h;
 
-	uint32_t min_scale_percent = stsf->min;
-	uint32_t max_scale_percent = stsf->max;
+	uint32_t min_scale_percent = (uint32_t)stsf->min;
+	uint32_t max_scale_percent = (uint32_t)stsf->max;
 
 	double min_audio_level = stsf->minimum_audio_level;
-	double max_audio_level = stsf->maximum_audio_level;
 
 	double range = stsf->audio_range;
 
@@ -423,19 +424,19 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 		scale_percent = min_scale_percent + max_scale_percent - scale_percent;
 	}
 
-	uint32_t audio_w = stsf->scale_w ? w * scale_percent / 100 : w;
-	uint32_t audio_h = stsf->scale_h ? h * scale_percent / 100 : h;
+	uint32_t audio_w = stsf->scale_w ? w * (uint32_t)scale_percent / 100 : w;
+	uint32_t audio_h = stsf->scale_h ? h * (uint32_t)scale_percent / 100 : h;
 
 	if ((audio_level < min_audio_level && !stsf->invert) || audio_w < stsf->min_w || audio_h < stsf->min_h) {
-		audio_w = stsf->scale_w ? stsf->min_w : w;
-		audio_h = stsf->scale_h ? stsf->min_h : h;
+		audio_w = (uint32_t)(stsf->scale_w ? stsf->min_w : w);
+		audio_h = (uint32_t)(stsf->scale_h ? stsf->min_h : h);
 	}
 
 	if (audio_w > stsf->max_w) {
-		audio_w = stsf->scale_w ? stsf->max_w : w;
+		audio_w = (uint32_t)(stsf->scale_w ? stsf->max_w : w);
 	}
 	if (audio_h > stsf->max_h) {
-		audio_h = stsf->scale_h ? stsf->max_h : h;
+		audio_h = (uint32_t)(stsf->scale_h ? stsf->max_h : h);
 	}
 
 	obs_enter_graphics();
