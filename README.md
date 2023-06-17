@@ -8,6 +8,8 @@ This plugin is not extensively tested, you may come across bugs
 
 ## Installation
 Get the archive/installer for your OS from the [latest release](https://github.com/dimtpap/obs-scale-to-sound/releases/latest).  
+### Windows
+Extract the archive in the OBS installation folder. Default is `C:\Program Files\obs-studio`.
 ### Linux
 The archive is for installing in the home directory  
 Extract it in `~/.config/obs-studio/plugins`  
