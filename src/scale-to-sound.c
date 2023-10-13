@@ -46,7 +46,6 @@ struct scale_to_sound_data {
 	obs_source_t *context;
 	obs_source_t *target;
 
-	obs_property_t *sources_list;
 	obs_weak_source_t *audio_source;
 	double minimum_audio_level;
 	double maximum_audio_level;
@@ -247,26 +246,24 @@ static void scale_to_sound_load(void *data, obs_data_t *settings)
 
 static bool enum_audio_sources(void *data, obs_source_t *source)
 {
-	struct scale_to_sound_data *stsf = data;
+	obs_property_t *sources_list = data;
 	uint32_t flags = obs_source_get_output_flags(source);
 
 	if ((flags & OBS_SOURCE_AUDIO) != 0) {
 		const char *name = obs_source_get_name(source);
-		obs_property_list_add_string(stsf->sources_list, name, name);
+		obs_property_list_add_string(sources_list, name, name);
 	}
 	return true;
 }
 
 static obs_properties_t *scale_to_sound_properties(void *data)
 {
-	struct scale_to_sound_data *stsf = data;
-
+	UNUSED_PARAMETER(data);
 	obs_properties_t *p = obs_properties_create();
 
 	obs_property_t *sources =
 		obs_properties_add_list(p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	stsf->sources_list = sources;
-	obs_enum_sources(enum_audio_sources, stsf);
+	obs_enum_sources(enum_audio_sources, sources);
 
 	obs_property_t *minlvl = obs_properties_add_float_slider(p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
 	obs_property_float_set_suffix(minlvl, "dB");
