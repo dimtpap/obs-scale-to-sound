@@ -34,6 +34,18 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define STS_YPOSAL "STS_YPOSAL"
 
 OBS_DECLARE_MODULE()
+OBS_MODULE_AUTHOR("Dimitris Papaioannou")
+
+MODULE_EXPORT const char *obs_module_name(void)
+{
+	return "Scale to Sound";
+}
+
+MODULE_EXPORT const char *obs_module_description(void)
+{
+	return "Scale a source reactively to sound levels";
+}
+
 const char *scale_to_sound_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
