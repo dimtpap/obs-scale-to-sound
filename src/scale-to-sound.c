@@ -330,12 +330,18 @@ static void scale_to_sound_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, STS_YPOSAL, CENTER);
 }
 
-static void scale_to_sound_destroy(void *data)
+static void scale_to_sound_remove(void *data, obs_source_t *source)
 {
+	UNUSED_PARAMETER(source);
+
 	struct scale_to_sound_data *stsf = data;
 
 	if (stsf->audio_source) {
 		obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
+
+		if (!current_target) {
+			return;
+		}
 
 		signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
 		signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
@@ -344,7 +350,14 @@ static void scale_to_sound_destroy(void *data)
 
 		obs_source_release(current_target);
 		obs_weak_source_release(stsf->audio_source);
+
+		stsf->audio_source = NULL;
 	}
+}
+
+static void scale_to_sound_destroy(void *data)
+{
+	struct scale_to_sound_data *stsf = data;
 
 	obs_enter_graphics();
 	gs_effect_destroy(stsf->mover);
@@ -482,6 +495,7 @@ const struct obs_source_info scale_to_sound = {
 	.update = scale_to_sound_update,
 	.video_tick = scale_to_sound_tick,
 	.video_render = scale_to_sound_render,
+	.filter_remove = scale_to_sound_remove,
 	.destroy = scale_to_sound_destroy,
 };
 
