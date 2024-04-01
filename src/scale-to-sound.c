@@ -87,7 +87,9 @@ struct scale_to_sound_data {
 	gs_eparam_t *param_pos;
 };
 
-static void audio_source_capture_callback(void *param, obs_source_t *source, const struct audio_data *data, bool muted)
+static void audio_source_capture_callback(void *param, obs_source_t *source,
+					  const struct audio_data *data,
+					  bool muted)
 {
 	UNUSED_PARAMETER(source);
 
@@ -128,7 +130,9 @@ static void audio_source_capture_callback(void *param, obs_source_t *source, con
 		else if (stsf->audio_level < audio_level)
 			stsf->audio_level += smooth;
 	} else {
-		stsf->audio_level = audio_level >= min_audio_level ? audio_level : min_audio_level;
+		stsf->audio_level = audio_level >= min_audio_level
+					    ? audio_level
+					    : min_audio_level;
 	}
 }
 
@@ -149,7 +153,8 @@ static void *scale_to_sound_create(obs_data_t *settings, obs_source_t *source)
 {
 	UNUSED_PARAMETER(settings);
 
-	struct scale_to_sound_data *stsf = bzalloc(sizeof(struct scale_to_sound_data));
+	struct scale_to_sound_data *stsf =
+		bzalloc(sizeof(struct scale_to_sound_data));
 	stsf->context = source;
 
 	char *effect_file = obs_module_file("default_move.effect");
@@ -212,14 +217,17 @@ static void scale_to_sound_update(void *data, obs_data_t *settings)
 	double maximum_audio_level = obs_data_get_double(settings, STS_MAXLVL);
 	if (maximum_audio_level > stsf->minimum_audio_level) {
 		stsf->maximum_audio_level = maximum_audio_level;
-		stsf->audio_range = stsf->maximum_audio_level - stsf->minimum_audio_level;
+		stsf->audio_range =
+			stsf->maximum_audio_level - stsf->minimum_audio_level;
 	} else {
-		obs_data_set_double(settings, STS_MAXLVL, stsf->minimum_audio_level + 0.5f);
+		obs_data_set_double(settings, STS_MAXLVL,
+				    stsf->minimum_audio_level + 0.5f);
 		stsf->maximum_audio_level = stsf->minimum_audio_level + 0.5f;
 		stsf->audio_range = 0.5f;
 	}
 
-	obs_source_t *new_target = obs_get_source_by_name(obs_data_get_string(settings, STS_AUDSRC));
+	obs_source_t *new_target = obs_get_source_by_name(
+		obs_data_get_string(settings, STS_AUDSRC));
 
 	obs_source_t *current_target = NULL;
 	if (stsf->audio_source)
@@ -228,18 +236,24 @@ static void scale_to_sound_update(void *data, obs_data_t *settings)
 	if (current_target != new_target) {
 		signal_handler_t *sig_handler;
 		if (current_target) {
-			sig_handler = obs_source_get_signal_handler(current_target);
-			signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
+			sig_handler =
+				obs_source_get_signal_handler(current_target);
+			signal_handler_disconnect(sig_handler, "destroy",
+						  audio_source_destroy, stsf);
 
-			obs_source_remove_audio_capture_callback(current_target, audio_source_capture_callback, stsf);
+			obs_source_remove_audio_capture_callback(
+				current_target, audio_source_capture_callback,
+				stsf);
 
 			obs_weak_source_release(stsf->audio_source);
 		}
 
 		sig_handler = obs_source_get_signal_handler(new_target);
-		signal_handler_connect(sig_handler, "destroy", audio_source_destroy, stsf);
+		signal_handler_connect(sig_handler, "destroy",
+				       audio_source_destroy, stsf);
 
-		obs_source_add_audio_capture_callback(new_target, audio_source_capture_callback, stsf);
+		obs_source_add_audio_capture_callback(
+			new_target, audio_source_capture_callback, stsf);
 
 		stsf->audio_source = obs_source_get_weak_source(new_target);
 	}
@@ -273,37 +287,45 @@ static obs_properties_t *scale_to_sound_properties(void *data)
 	UNUSED_PARAMETER(data);
 	obs_properties_t *p = obs_properties_create();
 
-	obs_property_t *sources =
-		obs_properties_add_list(p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_t *sources = obs_properties_add_list(
+		p, STS_AUDSRC, "Audio Source", OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_STRING);
 	obs_enum_sources(enum_audio_sources, sources);
 
-	obs_property_t *minlvl = obs_properties_add_float_slider(p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
+	obs_property_t *minlvl = obs_properties_add_float_slider(
+		p, STS_MINLVL, "Audio Threshold", -100, -0.5, 0.5);
 	obs_property_float_set_suffix(minlvl, "dB");
 
-	obs_property_t *maxlvl = obs_properties_add_float_slider(p, STS_MAXLVL, "Audio Ceiling", -99.5, 0, 0.5);
+	obs_property_t *maxlvl = obs_properties_add_float_slider(
+		p, STS_MAXLVL, "Audio Ceiling", -99.5, 0, 0.5);
 	obs_property_float_set_suffix(maxlvl, "dB");
 
-	obs_property_t *minper = obs_properties_add_int_slider(p, STS_MINPER, "Minimum Size", 0, 99, 1);
+	obs_property_t *minper = obs_properties_add_int_slider(
+		p, STS_MINPER, "Minimum Size", 0, 99, 1);
 	obs_property_int_set_suffix(minper, "%");
 
-	obs_property_t *maxper = obs_properties_add_int_slider(p, STS_MAXPER, "Maximum Size", 1, 100, 1);
+	obs_property_t *maxper = obs_properties_add_int_slider(
+		p, STS_MAXPER, "Maximum Size", 1, 100, 1);
 	obs_property_int_set_suffix(maxper, "%");
 
 	obs_properties_add_bool(p, STS_INVSCL, "Inverse Scaling");
 
-	obs_properties_add_float_slider(p, STS_SMOOTH, "Smoothing", 0, 0.99, 0.01);
+	obs_properties_add_float_slider(p, STS_SMOOTH, "Smoothing", 0, 0.99,
+					0.01);
 
 	obs_properties_add_bool(p, STS_SCALEW, "Scale Width");
 	obs_properties_add_bool(p, STS_SCALEH, "Scale Height");
 
-	obs_property_t *x_pos_alignment =
-		obs_properties_add_list(p, STS_XPOSAL, "X Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_t *x_pos_alignment = obs_properties_add_list(
+		p, STS_XPOSAL, "X Positional Alignment", OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(x_pos_alignment, "Left", BEGINNING);
 	obs_property_list_add_int(x_pos_alignment, "Center", CENTER);
 	obs_property_list_add_int(x_pos_alignment, "Right", END);
 
-	obs_property_t *y_pos_alignment =
-		obs_properties_add_list(p, STS_YPOSAL, "Y Positional Alignment", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_t *y_pos_alignment = obs_properties_add_list(
+		p, STS_YPOSAL, "Y Positional Alignment", OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(y_pos_alignment, "Top", BEGINNING);
 	obs_property_list_add_int(y_pos_alignment, "Center", CENTER);
 	obs_property_list_add_int(y_pos_alignment, "Bottom", END);
@@ -337,16 +359,20 @@ static void scale_to_sound_remove(void *data, obs_source_t *source)
 	struct scale_to_sound_data *stsf = data;
 
 	if (stsf->audio_source) {
-		obs_source_t *current_target = obs_weak_source_get_source(stsf->audio_source);
+		obs_source_t *current_target =
+			obs_weak_source_get_source(stsf->audio_source);
 
 		if (!current_target) {
 			return;
 		}
 
-		signal_handler_t *sig_handler = obs_source_get_signal_handler(current_target);
-		signal_handler_disconnect(sig_handler, "destroy", audio_source_destroy, stsf);
+		signal_handler_t *sig_handler =
+			obs_source_get_signal_handler(current_target);
+		signal_handler_disconnect(sig_handler, "destroy",
+					  audio_source_destroy, stsf);
 
-		obs_source_remove_audio_capture_callback(current_target, audio_source_capture_callback, stsf);
+		obs_source_remove_audio_capture_callback(
+			current_target, audio_source_capture_callback, stsf);
 
 		obs_source_release(current_target);
 		obs_weak_source_release(stsf->audio_source);
@@ -388,7 +414,8 @@ static void scale_to_sound_tick(void *data, float seconds)
 	}
 }
 
-static float determine_position(int i, int target, enum positional_alignment option)
+static float determine_position(int i, int target,
+				enum positional_alignment option)
 {
 	switch (option) {
 	case BEGINNING:
@@ -427,7 +454,7 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	}
 
 	if (stsf->audio_level > stsf->minimum_audio_level &&
-		os_gettime_ns() - stsf->last_update_ts > 500000000) { //0.5s timeout
+	    os_gettime_ns() - stsf->last_update_ts > 500000000) { //0.5s timeout
 		if (stsf->smooth < 1)
 			stsf->audio_level -= stsf->smooth;
 		else
@@ -437,19 +464,26 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	double scale_percent = fabs(min_audio_level) - fabs(audio_level);
 
 	//Scale the calculated from audio percentage down to the user-set range
-	scale_percent = (scale_percent * (max_scale_percent - min_scale_percent)) / range + min_scale_percent;
+	scale_percent =
+		(scale_percent * (max_scale_percent - min_scale_percent)) /
+			range +
+		min_scale_percent;
 	if (scale_percent < min_scale_percent || audio_level >= 0) {
 		scale_percent = min_scale_percent;
 	}
 
 	if (stsf->invert) {
-		scale_percent = min_scale_percent + max_scale_percent - scale_percent;
+		scale_percent =
+			min_scale_percent + max_scale_percent - scale_percent;
 	}
 
-	uint32_t audio_w = stsf->scale_w ? w * (uint32_t)scale_percent / 100 : w;
-	uint32_t audio_h = stsf->scale_h ? h * (uint32_t)scale_percent / 100 : h;
+	uint32_t audio_w = stsf->scale_w ? w * (uint32_t)scale_percent / 100
+					 : w;
+	uint32_t audio_h = stsf->scale_h ? h * (uint32_t)scale_percent / 100
+					 : h;
 
-	if ((audio_level < min_audio_level && !stsf->invert) || audio_w < stsf->min_w || audio_h < stsf->min_h) {
+	if ((audio_level < min_audio_level && !stsf->invert) ||
+	    audio_w < stsf->min_w || audio_h < stsf->min_h) {
 		audio_w = (uint32_t)(stsf->scale_w ? stsf->min_w : w);
 		audio_h = (uint32_t)(stsf->scale_h ? stsf->min_h : h);
 	}
@@ -462,7 +496,8 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	}
 
 	obs_enter_graphics();
-	obs_source_process_filter_begin(stsf->context, GS_RGBA, OBS_ALLOW_DIRECT_RENDERING);
+	obs_source_process_filter_begin(stsf->context, GS_RGBA,
+					OBS_ALLOW_DIRECT_RENDERING);
 
 	gs_effect_set_float(stsf->param_show, 1.0f);
 	if (audio_w <= 0 || audio_h <= 0) {
@@ -479,7 +514,8 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 
 	gs_effect_set_vec4(stsf->param_pos, &move_vec);
 
-	obs_source_process_filter_end(stsf->context, stsf->mover, audio_w, audio_h);
+	obs_source_process_filter_end(stsf->context, stsf->mover, audio_w,
+				      audio_h);
 	obs_leave_graphics();
 }
 
