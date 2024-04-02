@@ -43,6 +43,8 @@
     "website": "dimtpap.ovh",
     "email": "dimtpap@protonmail.com",
     "uuids": {
-        "windowsApp": "00000000-0000-0000-0000-000000000000"
+        "macosPackage": "cf23365b-7649-4d1e-a727-3e570ae6549b",
+        "macosInstaller": "41396a14-ea19-4dd9-b899-fa49ac622b82",
+        "windowsApp": "743552ec-188f-4440-afca-1c0636657123"
     }
 }
