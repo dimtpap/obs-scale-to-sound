@@ -139,7 +139,6 @@ runs:
     - name: Notarization 🧑‍💼
       shell: zsh --no-rcs --errexit --pipefail {0}
       id: notarization
-      if: ${{ fromJSON(steps.codesign.outputs.haveCodesignIdent) }}
       env:
           MACOS_NOTARIZATION_USERNAME: ${{ inputs.notarizationUser }}
           MACOS_NOTARIZATION_PASSWORD: ${{ inputs.notarizationPassword }}
