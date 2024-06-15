@@ -12,7 +12,8 @@ Get the archive/installer for your OS from the [latest release](https://github.c
 Extract the archive in the OBS installation folder. Default is `C:\Program Files\obs-studio`.
 ### Linux
 The archive is for installing in the home directory  
-Extract it in `~/.config/obs-studio/plugins`  
+Extract it in `~/.config/obs-studio/plugins`  or `~/.var/app/com.obsproject.Studio/config/obs-studio/plugins` if you use the Flatpak.
+
 #### Flatpak
 Available in Flathub. You can find it on OBS Studio's page under Add-ons.  
 #### AUR
