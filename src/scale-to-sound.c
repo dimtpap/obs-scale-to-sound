@@ -509,10 +509,9 @@ static void scale_to_sound_render(void *data, gs_effect_t *effect)
 	float x_pos = determine_position(w, audio_w, stsf->x_pos_alignment);
 	float y_pos = determine_position(h, audio_h, stsf->y_pos_alignment);
 
-	struct vec4 move_vec;
-	vec4_set(&move_vec, x_pos, y_pos, 0.0f, 0.0f);
-
-	gs_effect_set_vec4(stsf->param_pos, &move_vec);
+	struct vec2 move_vec;
+	vec2_set(&move_vec, x_pos / (float)audio_w, y_pos / (float)audio_h);
+	gs_effect_set_vec2(stsf->param_pos, &move_vec);
 
 	obs_source_process_filter_end(stsf->context, stsf->mover, audio_w,
 				      audio_h);
